@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+
+state/tasks/*
+!state/tasks/.keep
+
+.openclaw
+.env
+.env.*
+
+node_modules/
