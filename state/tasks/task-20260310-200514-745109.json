@@ -1,0 +1,83 @@
+{
+  "task_id": "task-20260310-200514-745109",
+  "status": "completed",
+  "query": "仮説検証したい",
+  "selected_skill": "experiment",
+  "selected_skills": [
+    "experiment"
+  ],
+  "route_reason": "experiment_keyword_match",
+  "router_result": {
+    "ok": true,
+    "selected_skill": "experiment",
+    "selected_skills": [
+      "experiment"
+    ],
+    "route_reason": "experiment_keyword_match",
+    "router_policy": {
+      "category_order": [
+        "critique",
+        "decision",
+        "experiment",
+        "execution",
+        "research",
+        "retrospective"
+      ],
+      "fallback_order": [
+        "decision",
+        "critique",
+        "research",
+        "execution"
+      ],
+      "max_chain": 3
+    },
+    "pipeline": {
+      "primary_skill": "experiment",
+      "skill_chain": [
+        "experiment"
+      ],
+      "chain_length": 1,
+      "max_chain": 3
+    },
+    "plan": {
+      "goal": "仮説検証したい",
+      "steps": [
+        {
+          "skill": "experiment",
+          "purpose": "仮説検証の最小実験化",
+          "done_when": "仮説と検証手順が定義される"
+        }
+      ],
+      "step_count": 1,
+      "mode": "autonomous_planning"
+    },
+    "planning_mode": "autonomous",
+    "task_id": "task-20260310-200514-745109",
+    "task_path": "/home/milky/agent-os/state/tasks/task-20260310-200514-745109.json"
+  },
+  "pipeline": {
+    "primary_skill": "experiment",
+    "skill_chain": [
+      "experiment"
+    ],
+    "chain_length": 1,
+    "max_chain": 3
+  },
+  "plan": {
+    "goal": "仮説検証したい",
+    "steps": [
+      {
+        "skill": "experiment",
+        "purpose": "仮説検証の最小実験化",
+        "done_when": "仮説と検証手順が定義される"
+      }
+    ],
+    "step_count": 1,
+    "mode": "autonomous_planning"
+  },
+  "planning_mode": "autonomous",
+  "result": {
+    "summary": "",
+    "findings": []
+  }
+}

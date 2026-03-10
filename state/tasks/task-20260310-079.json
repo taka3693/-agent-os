@@ -1,0 +1,24 @@
+{
+  "task_id": "task-20260310-079",
+  "created_at": "2026-03-10T04:24:27+00:00",
+  "updated_at": "2026-03-10T04:24:27+00:00",
+  "source": "telegram",
+  "input_text": "json {\"steps\":[...]}",
+  "selected_skill": "decision",
+  "route_reason": "fallback",
+  "status": "failed",
+  "chain_count": 0,
+  "allowed_skills": [
+    "decision"
+  ],
+  "model": "zai/glm-5",
+  "run_input": {
+    "query": "json {\"steps\":[...]}"
+  },
+  "result": null,
+  "error": {
+    "type": "RuntimeError",
+    "message": "invalid json plan after 'json'",
+    "traceback": "Traceback (most recent call last):\n  File \"/home/milky/agent-os/skills/decision/decision_impl.py\", line 47, in run_decision\n    obj = json.loads(raw)\n          ^^^^^^^^^^^^^^^\n  File \"/usr/lib/python3.12/json/__init__.py\", line 346, in loads\n    return _default_decoder.decode(s)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/usr/lib/python3.12/json/decoder.py\", line 337, in decode\n    obj, end = self.raw_decode(s, idx=_w(s, 0).end())\n               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/usr/lib/python3.12/json/decoder.py\", line 355, in raw_decode\n    raise JSONDecodeError(\"Expecting value\", s, err.value) from None\njson.decoder.JSONDecodeError: Expecting value: line 1 column 11 (char 10)\n\nThe above exception was the direct cause of the following exception:\n\nTraceback (most recent call last):\n  File \"/home/milky/agent-os/runner/run_research_task.py\", line 247, in main\n    result = run_selected_skill(selected_skill, query)\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/milky/agent-os/runner/run_research_task.py\", line 97, in run_selected_skill\n    return run_decision(query)\n           ^^^^^^^^^^^^^^^^^^^\n  File \"/home/milky/agent-os/skills/decision/decision_impl.py\", line 49, in run_decision\n    raise RuntimeError(\"invalid json plan after 'json'\") from e\nRuntimeError: invalid json plan after 'json'\n"
+  }
+}

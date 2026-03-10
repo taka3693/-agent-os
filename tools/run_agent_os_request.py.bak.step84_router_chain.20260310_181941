@@ -1,0 +1,1208 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import json
+import sys
+import subprocess
+import urllib.parse
+import urllib.request
+from pathlib import Path
+from typing import Any, Dict, List
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+from bridge.telegram_agent_os_entry import handle_message
+
+OPENCLAW_CONFIG = Path.home() / ".openclaw" / "openclaw.json"
+WORKSPACE_ROOT = PROJECT_ROOT / "workspace"
+READ_PREVIEW_LIMIT = 300
+LS_LIMIT = 50
+TREE_LIMIT = 80
+TREE_MAX_DEPTH = 3
+
+
+def load_openclaw_config() -> Dict[str, Any]:
+    return json.loads(OPENCLAW_CONFIG.read_text(encoding="utf-8"))
+
+
+def extract_bot_token(cfg: Dict[str, Any]) -> str:
+    candidates = [
+        (((cfg.get("channels") or {}).get("telegram") or {}).get("botToken")),
+        (((cfg.get("channels") or {}).get("telegram") or {}).get("token")),
+    ]
+    for token in candidates:
+        if isinstance(token, str) and token.strip():
+            return token.strip()
+    raise RuntimeError("telegram bot token not found in ~/.openclaw/openclaw.json")
+
+
+def send_telegram_message(chat_id: str | int, text: str) -> Dict[str, Any]:
+    cfg = load_openclaw_config()
+    token = extract_bot_token(cfg)
+
+    url = f"https://api.telegram.org/bot{token}/sendMessage"
+    data = urllib.parse.urlencode({
+        "chat_id": str(chat_id),
+        "text": text,
+    }).encode("utf-8")
+
+    req = urllib.request.Request(url, data=data, method="POST")
+    with urllib.request.urlopen(req, timeout=30) as resp:
+        body = resp.read().decode("utf-8")
+    return json.loads(body)
+
+
+def resolve_workspace_path(rel_path: str | None) -> Path | None:
+    raw = (rel_path or ".").strip()
+    p = (WORKSPACE_ROOT / raw).resolve()
+    root = WORKSPACE_ROOT.resolve()
+    try:
+        p.relative_to(root)
+    except ValueError:
+        return None
+    return p
+
+
+def read_json_if_exists(path_str: str | None) -> Dict[str, Any] | None:
+    if not path_str:
+        return None
+    p = Path(path_str)
+    if not p.exists():
+        return None
+    try:
+        return json.loads(p.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+
+
+def first_step_from_task(result: Dict[str, Any]) -> Dict[str, Any] | None:
+    task = read_json_if_exists(result.get("task_path"))
+    if not isinstance(task, dict):
+        return None
+    plan = ((task.get("input") or {}).get("plan") or {})
+    steps = plan.get("steps") if isinstance(plan, dict) else None
+    if isinstance(steps, list) and steps:
+        return steps[0] if isinstance(steps[0], dict) else None
+    return None
+
+
+def simplify_error(error: str | None) -> str:
+    s = (error or "").strip()
+    if not s:
+        return "unknown error"
+
+    prefixes = [
+        "PlanValidationError:",
+        "ValueError:",
+        "RuntimeError:",
+        "FileNotFoundError:",
+        "FileExistsError:",
+    ]
+    for prefix in prefixes:
+        if s.startswith(prefix):
+            s = s[len(prefix):].strip()
+            break
+    return s or "unknown error"
+
+
+def read_preview_from_workspace(rel_path: str | None, limit: int = READ_PREVIEW_LIMIT) -> str | None:
+    p = resolve_workspace_path(rel_path)
+    if p is None or not p.exists() or not p.is_file():
+        return None
+
+    try:
+        text = p.read_text(encoding="utf-8")
+    except Exception:
+        return None
+
+    if len(text) <= limit:
+        return text
+    return text[:limit] + "..."
+
+
+def list_dir(rel_path: str | None) -> str:
+    p = resolve_workspace_path(rel_path)
+    if p is None:
+        return "一覧失敗\n原因: path escapes workspace"
+
+    if not p.exists():
+        return f"一覧失敗\n原因: not found: {rel_path or '.'}"
+
+    if not p.is_dir():
+        return f"一覧失敗\n原因: not a directory: {rel_path or '.'}"
+
+    items = []
+    for child in sorted(p.iterdir(), key=lambda x: (x.is_file(), x.name.lower())):
+        if child.name.startswith("."):
+            continue
+        mark = "/" if child.is_dir() else ""
+        items.append(child.name + mark)
+
+    shown = items[:LS_LIMIT]
+    omitted = max(0, len(items) - len(shown))
+    lines = [
+        "一覧結果",
+        f"対象: {(rel_path or '.').strip() or '.'}",
+        f"表示上限: {LS_LIMIT}件",
+    ]
+    if shown:
+        lines.extend(f"- {x}" for x in shown)
+        if omitted:
+            lines.append(f"... ほか {omitted} 件")
+    else:
+        lines.append("(empty)")
+    return "\n".join(lines)
+
+
+def build_tree_lines(root: Path, depth: int, max_depth: int, out: List[str]) -> None:
+    if depth > max_depth or len(out) >= TREE_LIMIT:
+        return
+
+    children = [
+        c for c in sorted(root.iterdir(), key=lambda x: (x.is_file(), x.name.lower()))
+        if not c.name.startswith(".")
+    ]
+
+    for child in children:
+        if len(out) >= TREE_LIMIT:
+            return
+        indent = "  " * depth
+        suffix = "/" if child.is_dir() else ""
+        out.append(f"{indent}- {child.name}{suffix}")
+        if child.is_dir():
+            build_tree_lines(child, depth + 1, max_depth, out)
+
+
+def tree_dir(rel_path: str | None) -> str:
+    p = resolve_workspace_path(rel_path)
+    if p is None:
+        return "ツリー失敗\n原因: path escapes workspace"
+
+    if not p.exists():
+        return f"ツリー失敗\n原因: not found: {rel_path or '.'}"
+
+    if not p.is_dir():
+        return f"ツリー失敗\n原因: not a directory: {rel_path or '.'}"
+
+    out: List[str] = []
+    build_tree_lines(p, 0, TREE_MAX_DEPTH, out)
+
+    lines = [
+        "ツリー結果",
+        f"対象: {(rel_path or '.').strip() or '.'}",
+        f"表示上限: {TREE_LIMIT}件 / 深さ: {TREE_MAX_DEPTH}",
+    ]
+    if out:
+        lines.extend(out[:TREE_LIMIT])
+    else:
+        lines.append("(empty)")
+    if len(out) >= TREE_LIMIT:
+        lines.append("... (truncated)")
+    return "\n".join(lines)
+
+
+def mkdir_dir(rel_path: str | None) -> str:
+    raw = (rel_path or "").strip()
+    if not raw:
+        return "ディレクトリ作成失敗\n原因: path is empty"
+
+    p = resolve_workspace_path(raw)
+    if p is None:
+        return "ディレクトリ作成失敗\n原因: path escapes workspace"
+
+    if p.exists() and p.is_file():
+        return f"ディレクトリ作成失敗\n原因: file exists: {raw}"
+
+    p.mkdir(parents=True, exist_ok=True)
+    return "\n".join([
+        "ディレクトリ作成完了",
+        f"対象: {raw}",
+    ])
+
+
+
+def format_telegram_batch_summary(result):
+    if not isinstance(result, dict):
+        return None
+
+    step_results = result.get("step_results")
+    requested_steps = result.get("requested_steps")
+    executed_steps = result.get("executed_steps")
+
+    if not isinstance(step_results, list):
+        return None
+    if not isinstance(requested_steps, int) and not isinstance(executed_steps, int):
+        return None
+
+    status = str(result.get("status") or "unknown")
+    validate_only = bool(result.get("validate_only"))
+
+    status_label_map = {
+        "validated": "OK",
+        "validated_with_errors": "NGあり",
+        "completed": "完了",
+        "completed_with_errors": "一部NG",
+        "failed": "失敗",
+    }
+    mode_label_map = {
+        "policy": "ポリシー",
+        "validation": "検証",
+        "execution": "実行",
+        "help": "ヘルプ",
+        "browse": "参照",
+        "meta": "メタ",
+        "fs": "ファイル操作",
+        "pass": "通過",
+    }
+    reason_label_map = {
+        "delete_disabled": "削除コマンドは未対応",
+        "move_disabled": "移動コマンドは未対応",
+        "rename_disabled": "名前変更コマンドは未対応",
+        "nested_json_disabled": "nested aos json は未対応",
+        "unsupported_command": "未対応コマンド",
+        "empty_command": "空コマンドは未対応",
+    }
+
+    if validate_only or status.startswith("validated"):
+        phase_label = "検証"
+    else:
+        phase_label = "実行"
+
+    outcome = status_label_map.get(status, status)
+
+    parts = []
+    if isinstance(executed_steps, int) and isinstance(requested_steps, int):
+        parts.append(f"{requested_steps}件中{executed_steps}件")
+    elif isinstance(executed_steps, int):
+        parts.append(f"実行 {executed_steps}件")
+    elif isinstance(requested_steps, int):
+        parts.append(f"要求 {requested_steps}件")
+
+    ok_count = result.get("ok_count")
+    ng_count = result.get("ng_count")
+    if isinstance(ok_count, int) or isinstance(ng_count, int):
+        ok_disp = ok_count if isinstance(ok_count, int) else "-"
+        ng_disp = ng_count if isinstance(ng_count, int) else "-"
+        parts.append(f"OK {ok_disp}件 / NG {ng_disp}件")
+
+    line1 = f"{phase_label}: {outcome}"
+    if parts:
+        line1 += " (" + " | ".join(parts) + ")"
+
+    lines = [line1]
+
+    first_failed_step_index = result.get("first_failed_step_index")
+    first_failed_step_id = result.get("first_failed_step_id")
+    first_failed_mode = result.get("first_failed_mode")
+    first_failed_reason = result.get("first_failed_reason")
+
+    first_failed_step_label = None
+    if isinstance(first_failed_step_index, int) and first_failed_step_index >= 1:
+        idx0 = first_failed_step_index - 1
+        if 0 <= idx0 < len(step_results):
+            step_obj = step_results[idx0]
+            if isinstance(step_obj, dict):
+                label = step_obj.get("step_label")
+                if label is None:
+                    label = step_obj.get("step_id")
+                if label is not None:
+                    first_failed_step_label = str(label)
+
+    if (
+        first_failed_step_index is not None
+        or first_failed_step_id
+        or first_failed_mode
+        or first_failed_reason
+    ):
+        failed_parts = []
+        if first_failed_step_label:
+            failed_parts.append(f"step={first_failed_step_label}")
+        elif first_failed_step_id:
+            failed_parts.append(f"id={first_failed_step_id}")
+        if first_failed_step_index is not None:
+            failed_parts.append(f"step#{first_failed_step_index}")
+        if first_failed_mode:
+            failed_parts.append(f"種別={mode_label_map.get(str(first_failed_mode), str(first_failed_mode))}")
+        if first_failed_reason:
+            failed_parts.append(f"理由={reason_label_map.get(str(first_failed_reason), str(first_failed_reason))}")
+        lines.append("最初の失敗(1始まり): " + " / ".join(failed_parts))
+
+    continued_after_error = any(
+        isinstance(step, dict)
+        and (step.get("ok") is False)
+        and bool(step.get("continue_on_error"))
+        for step in step_results
+    )
+
+    note_parts = []
+    if continued_after_error and result.get("stopped_early") is not True:
+        note_parts.append("NG後も継続")
+    if result.get("stopped_early") is True:
+        note_parts.append("途中停止")
+    if result.get("completed_all_steps") is False:
+        note_parts.append("全step未完了")
+    if result.get("has_errors") is False and outcome in {"OK", "完了"}:
+        note_parts.append("エラーなし")
+
+    if note_parts:
+        lines.append("補足: " + " / ".join(note_parts))
+
+    return "\n".join(lines)
+
+
+def run_router_command(query: str, chat_id: str | int | None = None) -> Dict[str, Any]:
+    text = (query or "").strip()
+    lower = text.lower()
+
+    if lower.startswith("aos router "):
+        routed_query = text[len("aos router "):].strip()
+    elif lower.startswith("aos route "):
+        routed_query = text[len("aos route "):].strip()
+    else:
+        routed_query = text
+
+    if not routed_query:
+        return {
+            "ok": False,
+            "mode": "router",
+            "status": "invalid",
+            "reason": "empty_query",
+            "reply_text": "router 実行失敗\n理由: query が空です",
+            "telegram_send": None,
+            "telegram_reply_text": "router 実行失敗\n理由: query が空です",
+        }
+
+    base_dir = Path(__file__).resolve().parents[1]
+    bridge_script = base_dir / "bridge" / "route_to_task.py"
+    runner_script = base_dir / "runner" / "run_task_once.py"
+
+    if not bridge_script.exists():
+        return {
+            "ok": False,
+            "mode": "router",
+            "status": "bridge_missing",
+            "reason": "bridge_not_found",
+            "reply_text": f"router 実行失敗\n理由: bridge が見つかりません\npath: {bridge_script}",
+            "telegram_send": None,
+            "telegram_reply_text": f"router 実行失敗\n理由: bridge が見つかりません\npath: {bridge_script}",
+        }
+
+    payload = {
+        "text": routed_query,
+        "query": routed_query,
+    }
+    if chat_id is not None:
+        payload["chat_id"] = str(chat_id)
+
+    bridge_cp = subprocess.run(
+        [sys.executable, str(bridge_script)],
+        input=json.dumps(payload, ensure_ascii=False),
+        text=True,
+        capture_output=True,
+        cwd=str(base_dir),
+        check=False,
+    )
+
+    stdout = (bridge_cp.stdout or "").strip()
+    stderr = (bridge_cp.stderr or "").strip()
+
+    if bridge_cp.returncode != 0:
+        detail = stderr or stdout or "bridge_failed"
+        reply = f"router 実行失敗\n理由: bridge 実行エラー\n詳細: {detail}"
+        return {
+            "ok": False,
+            "mode": "router",
+            "status": "bridge_failed",
+            "reason": "bridge_failed",
+            "reply_text": reply,
+            "telegram_send": None,
+            "telegram_reply_text": reply,
+        }
+
+    try:
+        route_obj = json.loads(stdout)
+    except Exception:
+        reply = f"router 実行失敗\n理由: bridge 出力が JSON ではありません\nstdout: {stdout or '(empty)'}"
+        return {
+            "ok": False,
+            "mode": "router",
+            "status": "bridge_invalid_json",
+            "reason": "router_invalid_json",
+            "reply_text": reply,
+            "telegram_send": None,
+            "telegram_reply_text": reply,
+        }
+
+    if not route_obj.get("ok"):
+        reason = route_obj.get("reason") or route_obj.get("route_reason") or "route_failed"
+        reply = f"router 実行失敗\n理由: {reason}"
+        return {
+            "ok": False,
+            "mode": "router",
+            "status": "route_failed",
+            "reason": str(reason),
+            "router_result": route_obj,
+            "reply_text": reply,
+            "telegram_send": None,
+            "telegram_reply_text": reply,
+        }
+
+    task_id = route_obj.get("task_id")
+    task_path = route_obj.get("task_path")
+    selected_skill = route_obj.get("selected_skill")
+    route_reason = route_obj.get("route_reason")
+    bridge_reply = route_obj.get("reply")
+
+    runner_result = None
+    task_obj = None
+
+    if task_path:
+        try:
+            seeded = read_json_if_exists(task_path) or {}
+            if isinstance(seeded, dict):
+                changed = False
+
+                if not any(isinstance(seeded.get(k), str) and seeded.get(k, "").strip() for k in (
+                    "query", "text", "message", "prompt", "request_text", "original_text"
+                )):
+                    seeded["query"] = routed_query
+                    seeded["text"] = routed_query
+                    changed = True
+
+                if not (isinstance(seeded.get("selected_skill"), str) and seeded.get("selected_skill", "").strip()):
+                    if selected_skill:
+                        seeded["selected_skill"] = selected_skill
+                        changed = True
+
+                if changed:
+                    Path(task_path).write_text(
+                        json.dumps(seeded, ensure_ascii=False, indent=2) + "\n",
+                        encoding="utf-8",
+                    )
+        except Exception:
+            pass
+
+    if runner_script.exists() and task_path:
+        runner_cp = subprocess.run(
+            [sys.executable, str(runner_script), str(task_path)],
+            text=True,
+            capture_output=True,
+            cwd=str(base_dir),
+            check=False,
+        )
+        runner_stdout = (runner_cp.stdout or "").strip()
+        runner_stderr = (runner_cp.stderr or "").strip()
+
+        try:
+            runner_result = json.loads(runner_stdout) if runner_stdout else {
+                "ok": False,
+                "status": "runner_empty_output",
+                "error": runner_stderr or "runner_empty_output",
+            }
+        except Exception:
+            runner_result = {
+                "ok": False,
+                "status": "runner_invalid_json",
+                "error": runner_stdout or runner_stderr or "runner_invalid_json",
+            }
+
+        if task_path:
+            try:
+                task_obj = read_json_if_exists(task_path)
+            except Exception:
+                task_obj = None
+    else:
+        runner_result = {
+            "ok": False,
+            "status": "runner_missing",
+            "error": f"runner not found: {runner_script}",
+        }
+
+    task_status = None
+    if isinstance(task_obj, dict):
+        task_status = task_obj.get("status")
+    elif isinstance(runner_result, dict):
+        task_status = runner_result.get("status")
+
+    selected_skill = (
+        (task_obj.get("selected_skill") if isinstance(task_obj, dict) else None)
+        or (runner_result.get("selected_skill") if isinstance(runner_result, dict) else None)
+        or route_obj.get("selected_skill")
+    )
+
+    route_reason = (
+        (task_obj.get("route_reason") if isinstance(task_obj, dict) else None)
+        or route_obj.get("route_reason")
+        or route_reason
+    )
+
+    if selected_skill == "decision" and route_reason in (None, "", "keyword match", "keyword_match"):
+        route_reason = "decision_keyword_match"
+
+    if isinstance(route_obj, dict):
+        route_obj = dict(route_obj)
+        if selected_skill:
+            route_obj["selected_skill"] = selected_skill
+        if route_reason:
+            route_obj["route_reason"] = route_reason
+
+    ok = bool(route_obj.get("ok")) and isinstance(runner_result, dict) and bool(runner_result.get("ok"))
+
+    if ok:
+        summary = ""
+        if isinstance(task_obj, dict):
+            result_obj = task_obj.get("result")
+            if isinstance(result_obj, dict):
+                summary = str(result_obj.get("summary") or "").strip()
+
+        reply_lines = [
+            "router 受付完了",
+            f"skill: {selected_skill}",
+            f"reason: {route_reason}",
+            f"task: {task_id}",
+            f"path: {task_path}",
+            f"bridge: {bridge_reply}",
+            f"runner: {runner_result.get('status')}",
+        ]
+        if summary:
+            reply_lines.extend(["", summary])
+        reply = "\n".join(reply_lines)
+        return {
+            "ok": True,
+            "mode": "router",
+            "status": "completed",
+            "selected_skill": selected_skill,
+            "route_reason": route_reason,
+            "task_id": task_id,
+            "task_path": task_path,
+            "task_status": task_status,
+            "router_result": route_obj,
+            "runner_result": runner_result,
+            "task_result": task_obj.get("result") if isinstance(task_obj, dict) else None,
+            "reply_text": reply,
+            "telegram_send": None,
+            "telegram_reply_text": reply,
+        }
+
+    fail_lines = [
+        "router 実行失敗",
+        f"skill: {selected_skill}",
+        f"reason: {route_reason}",
+        f"task: {task_id}",
+        f"path: {task_path}",
+        f"bridge: {bridge_reply}",
+    ]
+    if isinstance(runner_result, dict):
+        fail_lines.append(f"runner: {runner_result.get('status')}")
+        if runner_result.get("error"):
+            fail_lines.append(f"error: {runner_result.get('error')}")
+    reply = "\n".join(fail_lines)
+
+    return {
+        "ok": False,
+        "mode": "router",
+        "status": "failed",
+        "selected_skill": selected_skill,
+        "route_reason": route_reason,
+        "task_id": task_id,
+        "task_path": task_path,
+        "task_status": task_status,
+        "router_result": route_obj,
+        "runner_result": runner_result,
+        "task_result": task_obj.get("result") if isinstance(task_obj, dict) else None,
+        "reply_text": reply,
+        "telegram_send": None,
+        "telegram_reply_text": reply,
+    }
+
+
+_old_run_router_command = run_router_command
+
+def run_router_command(query: str, chat_id: str | int | None = None) -> Dict[str, Any]:
+    out = _old_run_router_command(query, chat_id=chat_id)
+
+    if not isinstance(out, dict):
+        return out
+
+    if chat_id is None:
+        return out
+
+    if out.get("telegram_send") is not None:
+        return out
+
+    text = out.get("telegram_reply_text") or out.get("reply_text")
+    if not isinstance(text, str) or not text.strip():
+        return out
+
+    out = dict(out)
+    try:
+        out["telegram_send"] = send_telegram_message(chat_id, text)
+    except Exception as e:
+        out["telegram_send"] = {
+            "ok": False,
+            "error": f"{type(e).__name__}: {e}",
+        }
+    return out
+
+def format_reply(result: Dict[str, Any]) -> str:
+    if result.get("mode") == "router":
+        return str(result.get("reply_text") or "").strip()
+    if result.get("is_json_batch"):
+        return str(result.get("reply_text") or "")
+    mode = result.get("mode")
+
+    if mode == "help":
+        return result.get("reply_text") or "AgentOS help unavailable"
+
+    if mode == "policy":
+        action = result.get("policy_action")
+        if action == "delete_blocked":
+            return "\n".join([
+                "削除コマンドは未対応",
+                "理由: 誤削除防止のため",
+                "代替: 別名へ write! で退避、または .bak を作成してから上書き",
+            ])
+        if action == "move_blocked":
+            return "\n".join([
+                "移動/改名コマンドは未対応",
+                "理由: 誤移動・参照切れ防止のため",
+                "代替: 新しいパスへ write! / append / mkdir で再構成",
+            ])
+        return "policy unavailable"
+
+    if mode == "meta":
+        if result.get("meta_action") == "workspace_root":
+            return "\n".join([
+                "workspace root",
+                result.get("workspace_root") or str(WORKSPACE_ROOT),
+            ])
+        return "meta command unavailable"
+
+    if mode == "browse":
+        action = result.get("browse_action")
+        path = result.get("path")
+        if action == "ls":
+            return list_dir(path)
+        if action == "tree":
+            return tree_dir(path)
+        return "browse command unavailable"
+
+    if mode == "fs":
+        action = result.get("fs_action")
+        path = result.get("path")
+        if action == "mkdir":
+            return mkdir_dir(path)
+        return "fs command unavailable"
+
+    if mode == "pass":
+        return "AgentOS対象外の入力です\n使い方: aos help"
+
+    if not result.get("ok"):
+        return "\n".join([
+            "実行失敗",
+            f"原因: {simplify_error(result.get('error'))}",
+        ])
+
+    step = first_step_from_task(result) or {}
+    action = step.get("action")
+    path = step.get("path")
+    operation_count = int(result.get("operation_count", 0) or 0)
+    artifacts = result.get("artifacts") or []
+
+    if action == "read" and operation_count == 1:
+        char_count = None
+        task = read_json_if_exists(result.get("task_path"))
+        try:
+            ops = (((task or {}).get("result") or {}).get("operations") or [])
+            if ops and isinstance(ops[0], dict):
+                char_count = ops[0].get("chars")
+        except Exception:
+            char_count = None
+
+        lines = ["読み取り完了"]
+        if path:
+            lines.append(f"対象: {path}")
+        if isinstance(char_count, int):
+            lines.append(f"文字数: {char_count}")
+
+        preview = read_preview_from_workspace(path)
+        if preview is not None:
+            lines.append("プレビュー:")
+            lines.append(preview)
+
+        return "\n".join(lines)
+
+    lines = [
+        "実行完了",
+        f"操作数: {operation_count}",
+    ]
+
+    if artifacts:
+        lines.append("更新ファイル:")
+        lines.extend(f"- {p}" for p in artifacts[:10])
+
+    return "\n".join(lines)
+
+
+def read_input() -> Dict[str, Any]:
+    if len(sys.argv) >= 2 and sys.argv[1] != "--json-stdin":
+        return {
+            "text": sys.argv[1],
+            "chat_id": None,
+        }
+
+    raw = sys.stdin.read()
+    raw = raw or ""
+    raw = raw.strip()
+
+    if not raw:
+        return {"text": "", "chat_id": None}
+
+    try:
+        obj = json.loads(raw)
+    except Exception:
+        return {"text": raw, "chat_id": None}
+
+    if not isinstance(obj, dict):
+        return {"text": str(obj), "chat_id": None}
+
+    return {
+        "text": obj.get("text", "") or "",
+        "chat_id": obj.get("chat_id"),
+    }
+
+
+
+def handle_message_with_json(text: str) -> Dict[str, Any]:
+    s = (text or "").strip()
+    prefix = "aos json "
+    if not s.lower().startswith(prefix):
+        return handle_message(text)
+
+    raw = s[len(prefix):].strip()
+    if not raw:
+        return {
+            "ok": False,
+            "mode": "execution",
+            "status": "failed",
+            "is_json_batch": True,
+            "operation_count": 0,
+            "reply_text": "json 実行失敗\n理由: JSON が空です\n使い方: aos json {\"steps\":[\"aos ls\", \"aos read notes/file.txt\"]}",
+        }
+
+    try:
+        obj = json.loads(raw)
+    except Exception as e:
+        return {
+            "ok": False,
+            "mode": "execution",
+            "status": "failed",
+            "is_json_batch": True,
+            "operation_count": 0,
+            "reply_text": f"json 実行失敗\n理由: JSON 解析エラー\n詳細: {e}",
+        }
+
+    steps = obj.get("steps")
+    validate_only = bool(obj.get("validate_only", False) or obj.get("dry_run", False))
+    if not isinstance(steps, list) or not steps:
+        return {
+            "ok": False,
+            "mode": "execution",
+            "status": "failed",
+            "is_json_batch": True,
+            "operation_count": 0,
+            "reply_text": 'json 実行失敗\n理由: "steps" は1件以上の配列である必要があります',
+        }
+
+    if len(steps) > 10:
+        return {
+            "ok": False,
+            "mode": "execution",
+            "status": "failed",
+            "is_json_batch": True,
+            "operation_count": 0,
+            "reply_text": "json 実行失敗\n理由: steps 上限は 10 件です",
+        }
+
+    step_results = []
+    sections = []
+
+    ok_count = 0
+    ng_count = 0
+    continue_on_error_default = bool(obj.get("continue_on_error", False))
+    first_failed_step_index = None
+    first_failed_step_id = None
+    first_failed_mode = None
+    first_failed_reason = None
+
+    for idx, step in enumerate(steps, start=1):
+        step_result = None
+        reply = ""
+        step_id = None
+        step_continue_on_error = continue_on_error_default
+        if isinstance(step, str):
+            cmd = step.strip()
+        elif isinstance(step, dict):
+            step_id = str(step.get("id") or step.get("label") or "").strip() or None
+            cmd = str(step.get("command") or step.get("text") or "").strip()
+            if "continue_on_error" in step:
+                step_continue_on_error = bool(step.get("continue_on_error"))
+        else:
+            return {
+                "ok": False,
+                "mode": "execution",
+                "status": "failed",
+                "is_json_batch": True,
+                "operation_count": len(step_results),
+                "step_results": step_results,
+                "results": step_results,
+                "reply_text": f"json 実行失敗\n失敗位置: step {idx}\n理由: step は文字列または {{\"command\": \"...\"}} 形式のみ対応",
+            }
+
+        if not cmd:
+            return {
+                "ok": False,
+                "mode": "execution",
+                "status": "failed",
+                "is_json_batch": True,
+                "operation_count": len(step_results),
+                "step_results": step_results,
+                "results": step_results,
+                "reply_text": f"json 実行失敗\n失敗位置: step {idx}\n理由: 空の command は未対応",
+            }
+
+        if not cmd.lower().startswith("aos "):
+            return {
+                "ok": False,
+                "mode": "execution",
+                "status": "failed",
+                "is_json_batch": True,
+                "operation_count": len(step_results),
+                "step_results": step_results,
+                "results": step_results,
+                "reply_text": f"json 実行失敗\n失敗位置: step {idx}\n理由: AgentOS コマンドのみ対応\n対象: {cmd}",
+            }
+
+        if cmd.lower().startswith("aos router "):
+
+            query = cmd[len("aos router "):].strip()
+
+            step_result = run_router_command(cmd)
+
+        elif cmd.lower().startswith("aos route "):
+
+            query = cmd[len("aos route "):].strip()
+
+            step_result = run_router_command(cmd)
+
+        elif cmd.lower().startswith("aos router ") or cmd.lower().startswith("aos route "):
+            step_result = run_router_command(cmd)
+            if not step_result.get("ok", False):
+                all_ok = False
+        elif cmd.lower().startswith("aos json "):
+            return {
+                "ok": False,
+                "mode": "execution",
+                "status": "failed",
+                "is_json_batch": True,
+                "operation_count": len(step_results),
+                "step_results": step_results,
+                "results": step_results,
+                "reply_text": f"json 実行失敗\n失敗位置: step {idx}\n理由: nested aos json は未対応",
+            }
+
+        if validate_only:
+            lower_cmd = cmd.lower().strip()
+
+            if lower_cmd.startswith("aos router "):
+                query = cmd[len("aos router "):].strip()
+                step_result = run_router_command(cmd)
+
+            if lower_cmd.startswith("aos route "):
+                query = cmd[len("aos route "):].strip()
+                step_result = run_router_command(cmd)
+
+            if lower_cmd.startswith("aos rm ") or lower_cmd == "aos rm" or                lower_cmd.startswith("aos del ") or lower_cmd == "aos del" or                lower_cmd.startswith("aos delete ") or lower_cmd == "aos delete":
+                result = {
+                    "ok": False,
+                    "mode": "policy",
+                    "policy_action": "delete_blocked",
+                    "reason": "delete_disabled",
+                    "validation_action": "policy_check",
+                    "command": cmd,
+                }
+                reply = "検証NG\n削除コマンドは未対応\n理由: 誤削除防止のため"
+            elif lower_cmd.startswith("aos mv ") or lower_cmd == "aos mv" or                  lower_cmd.startswith("aos move ") or lower_cmd == "aos move" or                  lower_cmd.startswith("aos rename ") or lower_cmd == "aos rename":
+                result = {
+                    "ok": False,
+                    "mode": "policy",
+                    "policy_action": "move_blocked",
+                    "reason": "move_disabled",
+                    "validation_action": "policy_check",
+                    "command": cmd,
+                }
+                reply = "検証NG\n移動/改名コマンドは未対応\n理由: 誤移動・参照切れ防止のため"
+            elif lower_cmd.startswith("aos router "):
+                query = cmd[len("aos router "):].strip()
+                step_result = run_router_command(cmd)
+            elif lower_cmd.startswith("aos route "):
+                query = cmd[len("aos route "):].strip()
+                step_result = run_router_command(cmd)
+            elif lower_cmd.startswith("aos json "):
+                step_result = {
+                    "ok": False,
+                    "command": cmd,
+                    "status": "blocked",
+                    "policy_action": "nested_json_blocked",
+                    "reason": "nested_json_disabled",
+                }
+                all_ok = False
+                results.append(step_result)
+                reply = "検証NG\nnested aos json は未対応"
+            elif lower_cmd.startswith("aos router ") or lower_cmd.startswith("aos route "):
+                step_result = {
+                    "ok": True,
+                    "command": cmd,
+                    "status": "planned",
+                    "validation_action": "plan_router_step",
+                    "reason": "router_step_planned",
+                }
+                results.append(step_result)
+                reply = "検証OK\nrouter step は実行時にルーティング予定"
+            elif (
+                lower_cmd == "aos ls" or lower_cmd.startswith("aos ls ") or
+                lower_cmd == "aos tree" or lower_cmd.startswith("aos tree ") or
+                lower_cmd == "aos pwd" or
+                lower_cmd == "aos root" or
+                lower_cmd == "aos help" or
+                lower_cmd == "aos usage" or
+                lower_cmd.startswith("aos mkdir ") or
+                lower_cmd.startswith("aos read ") or
+                lower_cmd.startswith("aos cat ") or
+                lower_cmd.startswith("aos write ") or
+                lower_cmd.startswith("aos write! ") or
+                lower_cmd.startswith("aos append ")
+            ):
+                result = {
+                    "ok": True,
+                    "mode": "validation",
+                    "validation_action": "plan_step",
+                    "command": cmd,
+                }
+                reply = "検証OK\n実行は未実施"
+            else:
+                result = {
+                    "ok": False,
+                    "mode": "validation",
+                    "validation_action": "unsupported_command",
+                    "reason": "unsupported_command",
+                    "command": cmd,
+                }
+                reply = "検証NG\n未対応コマンド\n対象: " + cmd
+
+            if step_result is not None and (not step_result.get("ok")) and "continue_on_error" not in step:
+                step_continue_on_error = True
+        else:
+            result = handle_message(cmd)
+            reply = str(result.get("reply_text") or "").strip()
+            if not reply:
+                try:
+                    reply = str(format_reply(result) or "").strip()
+                except Exception:
+                    reply = ""
+        if step_result is None and isinstance(locals().get("result"), dict):
+            step_result = result
+        if step_result is None:
+            step_result = {
+                "ok": False,
+                "mode": "error",
+                "command": cmd,
+                "reason": "step_result_missing",
+                "reply_text": "実行失敗\n理由: 内部エラー(step_result_missing)",
+            }
+            all_ok = False
+        result = dict(step_result)
+        if validate_only and (cmd.lower().startswith("aos router ") or cmd.lower().startswith("aos route ")):
+            result["ok"] = True
+            result["mode"] = "validation"
+            result["status"] = "planned"
+            result["validation_action"] = "plan_router_step"
+            result["reason"] = "router_step_planned"
+            result["reply_text"] = "検証OK\nrouter step は実行時にルーティング予定"
+        if locals().get("reply"):
+            result["reply_text"] = reply
+        if step_id:
+            result["step_id"] = step_id
+            result["step_label"] = step_id
+        result["continue_on_error"] = step_continue_on_error
+
+        step_results.append(result)
+
+        mode = str(result.get("mode") or "")
+        ok = bool(result.get("ok"))
+        if ok:
+            ok_count += 1
+        else:
+            ng_count += 1
+            if first_failed_step_index is None:
+                first_failed_step_index = idx
+                first_failed_step_id = step_id
+                first_failed_mode = mode
+                first_failed_reason = str(result.get("reason") or result.get("error") or "").strip() or None
+
+        title = f"[step {idx}: {step_id}] {cmd}" if step_id else f"[step {idx}] {cmd}"
+        sections.append(
+            "\n".join(
+                [
+                    title,
+                    f"mode: {mode}",
+                    f"ok: {str(ok).lower()}",
+                    f"continue_on_error: {str(step_continue_on_error).lower()}",
+                    reply if reply else "(no reply)",
+                ]
+            )
+        )
+
+        if not ok and not step_continue_on_error:
+            return {
+                "ok": False,
+                "mode": "execution",
+                "status": "failed",
+                "is_json_batch": True,
+                "validate_only": validate_only,
+                "completed_all_steps": False,
+                "has_errors": (ng_count > 0),
+                "stopped_early": (len(step_results) < len(steps)),
+                "requested_steps": len(steps),
+                "executed_steps": len(step_results),
+                "operation_count": len(step_results),
+                "ok_count": ok_count,
+                "ng_count": ng_count,
+                "first_failed_step_index": first_failed_step_index,
+                "first_failed_step_id": first_failed_step_id,
+                "first_failed_mode": first_failed_mode,
+                "first_failed_reason": first_failed_reason,
+                "step_results": step_results,
+                "results": step_results,
+                "reply_text": "json 実行失敗\n"
+                f"完了ステップ数: {len(step_results)} / {len(steps)}\n"
+                f"成功: {ok_count}\n"
+                f"失敗: {ng_count}\n"
+                f"最初の失敗: step {first_failed_step_index}"
+                + (f" ({first_failed_step_id})" if first_failed_step_id else "")
+                + (f" / mode={first_failed_mode}" if first_failed_mode else "")
+                + (f" / reason={first_failed_reason}" if first_failed_reason else "")
+                + "\n\n"
+                + "\n\n---\n\n".join(sections),
+            }
+
+    final_ok = (ng_count == 0)
+    final_status = (
+        "validated" if (validate_only and final_ok) else
+        "validated_with_errors" if validate_only else
+        "completed" if final_ok else
+        "completed_with_errors"
+    )
+    return {
+        "ok": final_ok,
+        "mode": "execution",
+        "status": final_status,
+        "is_json_batch": True,
+        "validate_only": validate_only,
+        "completed_all_steps": True,
+        "has_errors": (ng_count > 0),
+        "stopped_early": False,
+        "requested_steps": len(steps),
+        "executed_steps": len(step_results),
+        "operation_count": len(step_results),
+        "ok_count": ok_count,
+        "ng_count": ng_count,
+        "first_failed_step_index": first_failed_step_index,
+        "first_failed_step_id": first_failed_step_id,
+        "first_failed_mode": first_failed_mode,
+        "first_failed_reason": first_failed_reason,
+        "step_results": step_results,
+        "results": step_results,
+        "reply_text": (
+            (
+                "json 検証完了\n"
+                if (validate_only and final_ok) else
+                "json 検証完了（一部NGあり）\n"
+                if validate_only else
+                ("json 実行完了\n" if final_ok else "json 実行完了（一部失敗あり）\n")
+            )
+            + f"完了ステップ数: {len(step_results)}\n"
+            + f"成功: {ok_count}\n"
+            + f"失敗: {ng_count}\n"
+            + (
+                (
+                    f"最初の失敗: step {first_failed_step_index}"
+                    + (f" ({first_failed_step_id})" if first_failed_step_id else "")
+                    + (f" / mode={first_failed_mode}" if first_failed_mode else "")
+                    + (f" / reason={first_failed_reason}" if first_failed_reason else "")
+                    + "\n"
+                ) if first_failed_step_index is not None else ""
+            )
+            + "\n"
+            + "\n\n---\n\n".join(sections)
+        ),
+    }
+
+
+def main() -> int:
+    payload = read_input()
+    text = payload.get("text", "") or ""
+    chat_id = payload.get("chat_id")
+
+    try:
+        cmd = str(text or "").strip()
+        lower_cmd = cmd.lower()
+
+        if lower_cmd.startswith("aos router "):
+            query = cmd[len("aos router "):].strip()
+            result = run_router_command(query)
+        elif lower_cmd.startswith("aos route "):
+            query = cmd[len("aos route "):].strip()
+            result = run_router_command(query)
+        else:
+            result = handle_message_with_json(text)
+
+        reply_text = format_reply(result)
+        telegram_reply_text = format_telegram_batch_summary(result) or reply_text
+
+        telegram_send = None
+        if chat_id is not None and result.get("mode") in {"execution", "help", "browse", "meta", "fs", "policy", "pass", "router"}:
+            try:
+                telegram_send = send_telegram_message(chat_id, telegram_reply_text)
+            except Exception as te:
+                result["telegram_send_error"] = f"{type(te).__name__}: {te}"
+
+        out = {
+            **result,
+            "reply_text": reply_text,
+                        "telegram_reply_text": telegram_reply_text,
+"telegram_send": telegram_send,
+        }
+        print(json.dumps(out, ensure_ascii=False, indent=2))
+
+        mode = result.get("mode")
+        if mode in {"help", "browse", "meta", "fs", "policy"}:
+            return 0
+        if mode == "execution":
+            return 0 if result.get("ok") else 1
+        return 0 if result.get("ok") else 1
+
+    except Exception as e:
+        out = {
+            "ok": False,
+            "mode": "error",
+            "error": f"{type(e).__name__}: {e}",
+        }
+        print(json.dumps(out, ensure_ascii=False, indent=2))
+        return 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

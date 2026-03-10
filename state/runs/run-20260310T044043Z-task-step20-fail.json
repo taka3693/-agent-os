@@ -1,0 +1,24 @@
+{
+  "run_id": "run-20260310T044043Z-task-step20-fail",
+  "timestamp": "2026-03-10T04:40:43+00:00",
+  "task_id": "task-step20-fail",
+  "step_count": 1,
+  "steps": [
+    {
+      "action": "write",
+      "path": "../escape.txt",
+      "content": "blocked\n"
+    }
+  ],
+  "artifacts": [],
+  "result": {
+    "ok": false,
+    "operation_count": 0,
+    "artifacts": [],
+    "artifact_paths": [],
+    "operations": [],
+    "error": "PlanValidationError: path escapes workspace: ../escape.txt"
+  },
+  "error": "PlanValidationError: path escapes workspace: ../escape.txt",
+  "operation_count": 0
+}

@@ -1,0 +1,69 @@
+{
+  "run_id": "run-20260310T044043Z-task-step20-success",
+  "timestamp": "2026-03-10T04:40:43+00:00",
+  "task_id": "task-step20-success",
+  "step_count": 3,
+  "steps": [
+    {
+      "action": "write",
+      "path": "notes/step20_success.txt",
+      "content": "alpha\n"
+    },
+    {
+      "action": "append",
+      "path": "notes/step20_success.txt",
+      "content": "beta\n"
+    },
+    {
+      "action": "read",
+      "path": "notes/step20_success.txt"
+    }
+  ],
+  "artifacts": [
+    "notes/step20_success.txt"
+  ],
+  "result": {
+    "ok": true,
+    "operation_count": 3,
+    "artifacts": [
+      "notes/step20_success.txt"
+    ],
+    "artifact_paths": [
+      "notes/step20_success.txt"
+    ],
+    "operations": [
+      {
+        "index": 1,
+        "action": "write",
+        "path": "notes/step20_success.txt",
+        "status": "ok",
+        "chars": 6
+      },
+      {
+        "index": 2,
+        "action": "append",
+        "path": "notes/step20_success.txt",
+        "status": "ok",
+        "chars": 5
+      },
+      {
+        "index": 3,
+        "action": "read",
+        "path": "notes/step20_success.txt",
+        "status": "ok",
+        "chars": 11
+      }
+    ],
+    "validation": {
+      "max_steps": 10,
+      "max_content_chars": 5000,
+      "allowed_actions": [
+        "append",
+        "read",
+        "write"
+      ]
+    }
+  },
+  "error": null,
+  "operation_count": 3
+}

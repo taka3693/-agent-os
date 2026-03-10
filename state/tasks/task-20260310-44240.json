@@ -1,0 +1,18 @@
+{
+  "task_id": "task-20260310-44240",
+  "created_at": "2026-03-10T07:04:07+00:00",
+  "updated_at": "2026-03-10T07:04:07+00:00",
+  "source": "telegram",
+  "input_text": "aos json {\"validate_only\":true,\"steps\":[\"aos ls workspace\",\"aos rm x\",\"aos read notes/todo.md\"]}",
+  "selected_skill": "decision",
+  "route_reason": "fallback",
+  "status": "queued",
+  "chain_count": 0,
+  "allowed_skills": null,
+  "model": "zai/glm-5",
+  "run_input": {
+    "query": "aos json {\"validate_only\":true,\"steps\":[\"aos ls workspace\",\"aos rm x\",\"aos read notes/todo.md\"]}"
+  },
+  "result": null,
+  "error": null
+}

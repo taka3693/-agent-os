@@ -1,0 +1,31 @@
+{
+  "id": "task-step20-fail",
+  "skill": "execution",
+  "status": "failed",
+  "input": {
+    "plan": {
+      "steps": [
+        {
+          "action": "write",
+          "path": "../escape.txt",
+          "content": "blocked\n"
+        }
+      ]
+    }
+  },
+  "started_at": "2026-03-10T04:40:43+00:00",
+  "completed_at": "2026-03-10T04:40:43+00:00",
+  "result": {
+    "ok": false,
+    "operation_count": 0,
+    "artifacts": [],
+    "artifact_paths": [],
+    "operations": [],
+    "error": "PlanValidationError: path escapes workspace: ../escape.txt",
+    "run_log_path": "/home/milky/agent-os/state/runs/run-20260310T044043Z-task-step20-fail.json"
+  },
+  "error": "PlanValidationError: path escapes workspace: ../escape.txt",
+  "artifacts": [],
+  "run_log_path": "/home/milky/agent-os/state/runs/run-20260310T044043Z-task-step20-fail.json",
+  "operation_count": 0
+}

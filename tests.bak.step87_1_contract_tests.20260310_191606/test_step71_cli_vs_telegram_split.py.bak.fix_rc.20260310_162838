@@ -1,0 +1,39 @@
+#!/usr/bin/env python3
+import json
+import subprocess
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+
+cmd = [
+    sys.executable,
+    str(ROOT / "tools" / "run_agent_os_request.py"),
+    'aos json {"validate_only":true,"steps":[{"id":"scan","command":"aos ls workspace"},{"id":"danger","command":"aos rm x","continue_on_error":true},{"id":"read","command":"aos read notes/todo.md"}]}',
+]
+
+cp = subprocess.run(cmd, cwd=str(ROOT), text=True, capture_output=True)
+print(cp.stdout)
+if cp.returncode != 0:
+    print(cp.stderr)
+    raise SystemExit(f"NG: command failed rc={cp.returncode}")
+
+obj = json.loads(cp.stdout)
+
+reply_text = obj.get("reply_text")
+telegram_reply_text = obj.get("telegram_reply_text")
+
+assert isinstance(reply_text, str) and reply_text, "reply_text missing"
+assert isinstance(telegram_reply_text, str) and telegram_reply_text, "telegram_reply_text missing"
+
+assert "json 実行" in reply_text, "CLI reply_text should remain detailed"
+assert "最初の失敗:" in reply_text, "CLI reply_text should include detailed failure section"
+assert "step_results" not in reply_text, "CLI reply_text should be prose, not raw JSON dump"
+
+assert telegram_reply_text.startswith("検証: NGあり"), "telegram summary must start with compact validation summary"
+assert "最初の失敗(1始まり): step=danger / step#2 / 種別=ポリシー / 理由=削除コマンドは未対応" in telegram_reply_text
+assert "補足: NG後も継続" in telegram_reply_text
+
+assert reply_text != telegram_reply_text, "CLI detail and Telegram summary must be split"
+
+print("PASS: Step71 CLI vs Telegram split OK")

@@ -1,0 +1,18 @@
+{
+  "task_id": "task-20260310-44298",
+  "created_at": "2026-03-10T08:21:07+00:00",
+  "updated_at": "2026-03-10T08:21:07+00:00",
+  "source": "run_agent_os_request",
+  "input_text": "aos router 調査",
+  "selected_skill": "research",
+  "route_reason": "keyword match",
+  "status": "queued",
+  "chain_count": 0,
+  "allowed_skills": null,
+  "model": "zai/glm-5",
+  "run_input": {
+    "query": "aos router 調査"
+  },
+  "result": null,
+  "error": null
+}

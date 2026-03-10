@@ -1,0 +1,48 @@
+{
+  "run_id": "run-20260310T052614520095Z-8d354b-task-20260310-052614-519667-f1cdf4",
+  "timestamp": "2026-03-10T05:26:14+00:00",
+  "task_id": "task-20260310-052614-519667-f1cdf4",
+  "step_count": 1,
+  "steps": [
+    {
+      "action": "append",
+      "path": "notes/append_policy.txt",
+      "content": "second-line-no-nl"
+    }
+  ],
+  "artifacts": [
+    "notes/append_policy.txt"
+  ],
+  "result": {
+    "ok": true,
+    "operation_count": 1,
+    "artifacts": [
+      "notes/append_policy.txt"
+    ],
+    "artifact_paths": [
+      "notes/append_policy.txt"
+    ],
+    "operations": [
+      {
+        "index": 1,
+        "action": "append",
+        "path": "notes/append_policy.txt",
+        "status": "ok",
+        "chars": 19,
+        "prefix_newline_added": true,
+        "suffix_newline_added": true
+      }
+    ],
+    "validation": {
+      "max_steps": 10,
+      "max_content_chars": 5000,
+      "allowed_actions": [
+        "append",
+        "read",
+        "write"
+      ]
+    }
+  },
+  "error": null,
+  "operation_count": 1
+}

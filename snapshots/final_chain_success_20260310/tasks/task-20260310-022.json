@@ -1,0 +1,30 @@
+{
+  "task_id": "task-20260310-022",
+  "created_at": "2026-03-10T03:49:51+00:00",
+  "updated_at": "2026-03-10T03:49:51+00:00",
+  "source": "telegram",
+  "input_text": "run live telegram finite-chain test after prefix fix",
+  "selected_skill": "critique",
+  "route_reason": "chained_from:task-20260310-021",
+  "status": "completed",
+  "chain_count": 2,
+  "allowed_skills": [
+    "critique"
+  ],
+  "model": "anthropic/claude-sonnet-4-6",
+  "run_input": {
+    "query": "run live telegram finite-chain test after prefix fix"
+  },
+  "result": {
+    "summary": "critique dry-run completed for: run live telegram finite-chain test after prefix fix",
+    "status": "ok",
+    "issues": [
+      "no real artifact inspection yet",
+      "no scoring logic yet"
+    ],
+    "decision": "revise"
+  },
+  "error": null,
+  "parent_task_id": "task-20260310-021",
+  "next_task_path": "/home/milky/agent-os/state/tasks/task-20260310-023.json"
+}

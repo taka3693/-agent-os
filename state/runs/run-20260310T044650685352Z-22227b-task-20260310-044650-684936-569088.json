@@ -1,0 +1,24 @@
+{
+  "run_id": "run-20260310T044650685352Z-22227b-task-20260310-044650-684936-569088",
+  "timestamp": "2026-03-10T04:46:50+00:00",
+  "task_id": "task-20260310-044650-684936-569088",
+  "step_count": 1,
+  "steps": [
+    {
+      "action": "write",
+      "path": "../bridge_escape.txt",
+      "content": "x\n"
+    }
+  ],
+  "artifacts": [],
+  "result": {
+    "ok": false,
+    "operation_count": 0,
+    "artifacts": [],
+    "artifact_paths": [],
+    "operations": [],
+    "error": "PlanValidationError: path escapes workspace: ../bridge_escape.txt"
+  },
+  "error": "PlanValidationError: path escapes workspace: ../bridge_escape.txt",
+  "operation_count": 0
+}

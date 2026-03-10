@@ -1,0 +1,92 @@
+from __future__ import annotations
+
+from typing import Any, Dict, List
+
+
+RETROSPECTIVE_HINTS = [
+    "事実と解釈を分ける",
+    "良かった点と問題点を両方書く",
+    "原因を1つに決めつけない",
+    "次回の改善を1手に絞る",
+]
+
+
+def _normalize_query(query: Any) -> str:
+    if query is None:
+        return ""
+    return str(query).strip()
+
+
+def _make_went_well(query: str) -> List[str]:
+    items: List[str] = []
+    if not query:
+        return [
+            "振り返り対象を定義しやすい。",
+            "改善余地を構造化しやすい。",
+        ]
+    items.append("実施内容を振り返り対象として切り出せている。")
+    items.append("次の改善に繋げる前提がある。")
+    return items[:3]
+
+
+def _make_problems(query: str) -> List[str]:
+    items: List[str] = []
+    if not query:
+        return [
+            "対象・期間・評価基準が不明。",
+            "結果より印象に流れる危険がある。",
+        ]
+
+    if not any(k in query for k in ["結果", "ログ", "事実", "数値", "記録"]):
+        items.append("事実データが弱い。結果ではなく感想で終わる危険がある。")
+
+    if not any(k in query for k in ["原因", "なぜ", "理由"]):
+        items.append("原因分析が弱い。再発防止や再現性に繋がりにくい。")
+
+    if not any(k in query for k in ["次", "改善", "対策", "action"]):
+        items.append("次回アクションが未定義。振り返りが実行改善に接続していない。")
+
+    if not items:
+        items = [
+            "成功要因と失敗要因の切り分けが不足している。",
+            "再現条件が整理されていない。",
+        ]
+
+    return items[:4]
+
+
+def _make_actions(query: str) -> List[str]:
+    actions: List[str] = [
+        "今回の結果を事実ベースで3行に要約する。",
+        "良かった点と問題点を1つずつ固定する。",
+        "次回は改善策を1つだけ実施して再評価する。",
+    ]
+    if query and any(k in query for k in ["コスト", "時間", "遅い", "重い"]):
+        actions.insert(0, "時間・コストの計測値を次回比較できる形で残す。")
+    uniq: List[str] = []
+    for x in actions:
+        if x not in uniq:
+            uniq.append(x)
+    return uniq[:5]
+
+
+def run(query: str, **kwargs: Any) -> Dict[str, Any]:
+    q = _normalize_query(query)
+    return {
+        "ok": True,
+        "skill": "retrospective",
+        "query": q,
+        "summary": "入力内容を振り返り観点に整理し、継続点・問題点・次回アクションを抽出した。",
+        "went_well": _make_went_well(q),
+        "problems": _make_problems(q),
+        "actions": _make_actions(q),
+        "notes": RETROSPECTIVE_HINTS,
+    }
+
+
+def execute(query: str, **kwargs: Any) -> Dict[str, Any]:
+    return run(query, **kwargs)
+
+
+def retrospective(query: str, **kwargs: Any) -> Dict[str, Any]:
+    return run(query, **kwargs)

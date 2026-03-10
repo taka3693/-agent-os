@@ -1,0 +1,153 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import json
+import re
+import shutil
+from datetime import datetime, timezone
+from pathlib import Path
+
+DIST = Path.home() / ".npm-global/lib/node_modules/openclaw/dist"
+
+A1 = "const processInboundMessage = async (params) => {"
+A2 = 'const isCommandLike = (text ?? "").trim().startsWith("/");'
+
+B = "/* AGENT_OS_HOOK_BEGIN */"
+E = "/* AGENT_OS_HOOK_END */"
+
+HOOK = r'''
+  /* AGENT_OS_HOOK_BEGIN */
+  try {
+    const __agentOsText = typeof text === "string" ? text.trim() : "";
+    if (/^aos\s+decision:\s*(json|write|append|read)\b/i.test(__agentOsText)) {
+      const __agentOsFindChatId = (obj, depth = 0) => {
+        if (!obj || depth > 6) return null;
+        if (Array.isArray(obj)) {
+          for (const item of obj) {
+            const v = __agentOsFindChatId(item, depth + 1);
+            if (v !== null && v !== undefined) return v;
+          }
+          return null;
+        }
+        if (typeof obj !== "object") return null;
+
+        if (obj.chat_id !== undefined && obj.chat_id !== null) return obj.chat_id;
+        if (obj.chatId !== undefined && obj.chatId !== null) return obj.chatId;
+
+        if (obj.chat && typeof obj.chat === "object" && obj.chat.id !== undefined && obj.chat.id !== null) {
+          return obj.chat.id;
+        }
+
+        for (const [k, v] of Object.entries(obj)) {
+          if ((k === "chat_id" || k === "chatId") && v !== undefined && v !== null) return v;
+          if (k === "chat" && v && typeof v === "object" && v.id !== undefined && v.id !== null) return v.id;
+          const found = __agentOsFindChatId(v, depth + 1);
+          if (found !== null && found !== undefined) return found;
+        }
+        return null;
+      };
+
+      const __agentOsChatId = __agentOsFindChatId(params);
+      const { spawnSync } = require("node:child_process");
+      const __agentOsPayload = JSON.stringify({
+        text: __agentOsText,
+        chat_id: __agentOsChatId
+      });
+
+      const __agentOsRes = spawnSync(
+        "python3",
+        ["/home/milky/agent-os/tools/run_agent_os_request.py", "--json-stdin"],
+        {
+          input: __agentOsPayload,
+          encoding: "utf8",
+          timeout: 300000,
+          maxBuffer: 1024 * 1024
+        }
+      );
+
+      const __agentOsStdout = (__agentOsRes.stdout || "").trim();
+      const __agentOsStderr = (__agentOsRes.stderr || "").trim();
+      console.error(
+        "[agent-os-hook] chat_id=%s rc=%s stdout=%s stderr=%s",
+        __agentOsChatId,
+        __agentOsRes.status,
+        __agentOsStdout,
+        __agentOsStderr
+      );
+    }
+  } catch (e) {
+    console.error("[agent-os-hook] delegate error", e);
+  }
+  /* AGENT_OS_HOOK_END */
+'''.strip("\n")
+
+
+def out(ok: bool, **kw):
+    print(json.dumps({"ok": ok, **kw}, ensure_ascii=False, indent=2))
+    raise SystemExit(0 if ok else 1)
+
+
+def ts() -> str:
+    return datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+
+
+def find_bundle() -> Path:
+    if not DIST.exists():
+        out(False, error=f"dist not found: {DIST}")
+
+    candidates = []
+    for p in sorted(DIST.glob("reply-*.js")):
+        try:
+            s = p.read_text(encoding="utf-8")
+        except Exception:
+            continue
+        if A1 in s and A2 in s:
+            candidates.append((p, s))
+
+    if not candidates:
+        out(False, error=f"no reply-*.js with anchors found under {DIST}")
+
+    for p, s in candidates:
+        if B in s and E in s:
+            return p
+
+    return candidates[-1][0]
+
+
+def patch_text(src: str) -> tuple[str, str]:
+    if B in src and E in src:
+        pattern = re.escape(B) + r".*?" + re.escape(E)
+        replaced, n = re.subn(pattern, lambda m: HOOK, src, count=1, flags=re.DOTALL)
+        if n != 1:
+            raise RuntimeError("failed to replace existing hook block")
+        return replaced, "updated"
+
+    if A1 not in src or A2 not in src:
+        raise RuntimeError("anchors missing in selected bundle")
+
+    replacement = A2 + "\n" + HOOK
+    patched = src.replace(A2, replacement, 1)
+
+    if patched == src:
+        raise RuntimeError("patch injection failed")
+
+    return patched, "patched"
+
+
+def main():
+    bundle = find_bundle()
+    src = bundle.read_text(encoding="utf-8")
+    patched, status = patch_text(src)
+
+    if patched == src and status in {"already_patched"}:
+        out(True, status=status, bundle=str(bundle))
+
+    backup = bundle.with_suffix(bundle.suffix + f".bak.agentos.{ts()}")
+    shutil.copy2(bundle, backup)
+    bundle.write_text(patched, encoding="utf-8")
+
+    out(True, status=status, bundle=str(bundle), backup=str(backup))
+
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,18 @@
+{
+  "task_id": "task-20260308-081",
+  "created_at": "2026-03-08T19:17:01+00:00",
+  "updated_at": "2026-03-08T19:17:01+00:00",
+  "source": "telegram",
+  "input_text": "比較して整理したい",
+  "selected_skill": "research",
+  "route_reason": "keyword match",
+  "status": "queued",
+  "chain_count": 0,
+  "allowed_skills": null,
+  "model": "zai/glm-5",
+  "run_input": {
+    "query": "比較して整理したい"
+  },
+  "result": null,
+  "error": null
+}

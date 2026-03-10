@@ -1,0 +1,83 @@
+{
+  "task_id": "task-20260310-195906-676023",
+  "status": "completed",
+  "query": "関連情報を調査して",
+  "selected_skill": "research",
+  "selected_skills": [
+    "research"
+  ],
+  "route_reason": "fallback_research",
+  "router_result": {
+    "ok": true,
+    "selected_skill": "research",
+    "selected_skills": [
+      "research"
+    ],
+    "route_reason": "fallback_research",
+    "router_policy": {
+      "category_order": [
+        "critique",
+        "decision",
+        "experiment",
+        "execution",
+        "research",
+        "retrospective"
+      ],
+      "fallback_order": [
+        "decision",
+        "critique",
+        "research",
+        "execution"
+      ],
+      "max_chain": 3
+    },
+    "pipeline": {
+      "primary_skill": "research",
+      "skill_chain": [
+        "research"
+      ],
+      "chain_length": 1,
+      "max_chain": 3
+    },
+    "plan": {
+      "goal": "関連情報を調査して",
+      "steps": [
+        {
+          "skill": "research",
+          "purpose": "入力内容の整理と情報抽出",
+          "done_when": "要点・論点・不足情報が見える"
+        }
+      ],
+      "step_count": 1,
+      "mode": "autonomous_planning"
+    },
+    "planning_mode": "autonomous",
+    "task_id": "task-20260310-195906-676023",
+    "task_path": "/home/milky/agent-os/state/tasks/task-20260310-195906-676023.json"
+  },
+  "pipeline": {
+    "primary_skill": "research",
+    "skill_chain": [
+      "research"
+    ],
+    "chain_length": 1,
+    "max_chain": 3
+  },
+  "plan": {
+    "goal": "関連情報を調査して",
+    "steps": [
+      {
+        "skill": "research",
+        "purpose": "入力内容の整理と情報抽出",
+        "done_when": "要点・論点・不足情報が見える"
+      }
+    ],
+    "step_count": 1,
+    "mode": "autonomous_planning"
+  },
+  "planning_mode": "autonomous",
+  "result": {
+    "summary": "",
+    "findings": []
+  }
+}

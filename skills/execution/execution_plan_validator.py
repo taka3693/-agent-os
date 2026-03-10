@@ -1,0 +1,105 @@
+from __future__ import annotations
+
+from pathlib import Path
+from typing import Any, Dict, List
+
+ALLOWED_ACTIONS = {"read", "write", "append"}
+DEFAULT_MAX_STEPS = 10
+DEFAULT_MAX_CONTENT_CHARS = 5000
+
+
+class PlanValidationError(ValueError):
+    pass
+
+
+def _ensure_workspace_path(path_str: str, workspace_root: Path) -> str:
+    if not isinstance(path_str, str) or not path_str.strip():
+        raise PlanValidationError("path must be a non-empty string")
+
+    raw = Path(path_str)
+
+    if raw.is_absolute():
+        raise PlanValidationError(f"path must be relative: {path_str}")
+
+    candidate = (workspace_root / raw).resolve()
+    root = workspace_root.resolve()
+
+    try:
+        candidate.relative_to(root)
+    except ValueError:
+        raise PlanValidationError(f"path escapes workspace: {path_str}")
+
+    return candidate.relative_to(root).as_posix()
+
+
+def validate_execution_plan(
+    plan: Dict[str, Any],
+    workspace_root: str | Path,
+    max_steps: int = DEFAULT_MAX_STEPS,
+    max_content_chars: int = DEFAULT_MAX_CONTENT_CHARS,
+) -> Dict[str, Any]:
+    workspace_root = Path(workspace_root)
+
+    if not isinstance(plan, dict):
+        raise PlanValidationError("plan must be an object")
+
+    steps = plan.get("steps")
+    if not isinstance(steps, list):
+        raise PlanValidationError("plan.steps must be a list")
+
+    if not steps:
+        raise PlanValidationError("plan.steps must not be empty")
+
+    if len(steps) > max_steps:
+        raise PlanValidationError(f"too many steps: {len(steps)} > {max_steps}")
+
+    normalized_steps: List[Dict[str, Any]] = []
+
+    for i, step in enumerate(steps, start=1):
+        if not isinstance(step, dict):
+            raise PlanValidationError(f"step {i}: must be an object")
+
+        action = step.get("action")
+        if action not in ALLOWED_ACTIONS:
+            raise PlanValidationError(
+                f"step {i}: invalid action {action!r}; allowed={sorted(ALLOWED_ACTIONS)}"
+            )
+
+        path = _ensure_workspace_path(step.get("path"), workspace_root)
+
+        normalized: Dict[str, Any] = {
+            "action": action,
+            "path": path,
+        }
+
+        if action in {"write", "append"}:
+            if "content" not in step:
+                raise PlanValidationError(f"step {i}: content is required for {action}")
+
+            content = step.get("content")
+            if not isinstance(content, str):
+                raise PlanValidationError(f"step {i}: content must be a string")
+
+            if len(content) > max_content_chars:
+                raise PlanValidationError(
+                    f"step {i}: content too large {len(content)} > {max_content_chars}"
+                )
+
+            normalized["content"] = content
+
+        if action == "write":
+            overwrite = step.get("overwrite", False)
+            if not isinstance(overwrite, bool):
+                raise PlanValidationError(f"step {i}: overwrite must be boolean")
+            normalized["overwrite"] = overwrite
+
+        normalized_steps.append(normalized)
+
+    return {
+        "steps": normalized_steps,
+        "limits": {
+            "max_steps": max_steps,
+            "max_content_chars": max_content_chars,
+            "allowed_actions": sorted(ALLOWED_ACTIONS),
+        },
+    }

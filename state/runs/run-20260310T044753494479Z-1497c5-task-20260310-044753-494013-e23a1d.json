@@ -1,0 +1,24 @@
+{
+  "run_id": "run-20260310T044753494479Z-1497c5-task-20260310-044753-494013-e23a1d",
+  "timestamp": "2026-03-10T04:47:53+00:00",
+  "task_id": "task-20260310-044753-494013-e23a1d",
+  "step_count": 1,
+  "steps": [
+    {
+      "action": "write",
+      "path": "../hook_escape.txt",
+      "content": "x\n"
+    }
+  ],
+  "artifacts": [],
+  "result": {
+    "ok": false,
+    "operation_count": 0,
+    "artifacts": [],
+    "artifact_paths": [],
+    "operations": [],
+    "error": "PlanValidationError: path escapes workspace: ../hook_escape.txt"
+  },
+  "error": "PlanValidationError: path escapes workspace: ../hook_escape.txt",
+  "operation_count": 0
+}

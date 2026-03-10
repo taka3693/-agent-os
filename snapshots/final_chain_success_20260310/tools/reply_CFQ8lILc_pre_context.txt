@@ -1,0 +1,41 @@
+			}) : void 0;
+			const peerId = isGroup ? buildTelegramGroupPeerId(chatId, resolvedThreadId) : String(chatId);
+			const parentPeer = buildTelegramParentPeer({
+				isGroup,
+				resolvedThreadId,
+				chatId
+			});
+			const sessionKey = resolveAgentRoute({
+				cfg: loadConfig(),
+				channel: "telegram",
+				accountId,
+				peer: {
+					kind: isGroup ? "group" : "direct",
+					id: peerId
+				},
+				parentPeer
+			}).sessionKey;
+			for (const r of addedReactions) {
+				const emoji = r.emoji;
+				const text = `Telegram reaction added: ${emoji} by ${senderLabel} on msg ${messageId}`;
+				enqueueSystemEvent(text, {
+					sessionKey,
+					contextKey: `telegram:reaction:add:${chatId}:${messageId}:${user?.id ?? "anon"}:${emoji}`
+				});
+				logVerbose(`telegram: reaction event enqueued: ${text}`);
+			}
+		} catch (err) {
+			runtime.error?.(danger(`telegram reaction handler failed: ${String(err)}`));
+		}
+	});
+	const processInboundMessage = async (params) => {
+		const { ctx, msg, chatId, resolvedThreadId, storeAllowFrom, sendOversizeWarning, oversizeLogMessage } = params;
+		const text = typeof msg.text === "string" ? msg.text : void 0;
+		const isCommandLike = (text ?? "").trim().startsWith("/");
+		if (text && !isCommandLike) {
+			const nowMs = Date.now();
+			const senderId = msg.from?.id != null ? String(msg.from.id) : "unknown";
+			const key = `text:${chatId}:${resolvedThreadId ?? "main"}:${senderId}`;
+			const existing = textFragmentBuffer.get(key);
+			if (existing) {
+				const last = existing.messages.at(-1);

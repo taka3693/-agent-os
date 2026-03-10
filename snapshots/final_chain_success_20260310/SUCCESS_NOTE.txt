@@ -1,0 +1,11 @@
+AgentOS milestone reached:
+
+- Telegram live hook works
+- route_to_task works
+- run_chain works
+- decision -> execution -> critique -> retrospective works
+- final summary returns to Telegram
+
+Known limitation:
+- execution / critique / retrospective are still dry-run stubs
+- next milestone: safe real execution with allowlist + backup + diff

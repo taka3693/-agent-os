@@ -1,0 +1,185 @@
+from __future__ import annotations
+
+import json
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any, Dict, List
+
+from skills.execution.execution_plan_validator import (
+    PlanValidationError,
+    validate_execution_plan,
+)
+
+WORKSPACE_ROOT = Path("/home/milky/agent-os/workspace")
+RUNS_DIR = Path("/home/milky/agent-os/state/runs")
+
+
+def _now_utc_iso() -> str:
+    return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+
+
+def _safe_task_id(task_id: str | None) -> str:
+    raw = (task_id or "manual").strip()
+    keep = []
+    for ch in raw:
+        if ch.isalnum() or ch in {"-", "_"}:
+            keep.append(ch)
+        else:
+            keep.append("_")
+    return "".join(keep)[:80] or "manual"
+
+
+def _make_run_id(task_id: str | None) -> str:
+    ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    return f"run-{ts}-{_safe_task_id(task_id)}"
+
+
+def _write_run_summary(summary: Dict[str, Any]) -> str:
+    RUNS_DIR.mkdir(parents=True, exist_ok=True)
+    run_id = summary["run_id"]
+    out = RUNS_DIR / f"{run_id}.json"
+    out.write_text(json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8")
+    return str(out)
+
+
+def _read_text(path: Path) -> str:
+    return path.read_text(encoding="utf-8")
+
+
+def _write_text(path: Path, content: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(content, encoding="utf-8")
+
+
+def _append_text(path: Path, content: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a", encoding="utf-8") as f:
+        f.write(content)
+
+
+def run_execution_plan(
+    plan: Dict[str, Any],
+    task_id: str | None = None,
+    workspace_root: str | Path = WORKSPACE_ROOT,
+    runs_dir: str | Path = RUNS_DIR,
+) -> Dict[str, Any]:
+    workspace_root = Path(workspace_root)
+    runs_dir = Path(runs_dir)
+
+    global WORKSPACE_ROOT, RUNS_DIR
+    WORKSPACE_ROOT = workspace_root
+    RUNS_DIR = runs_dir
+
+    run_id = _make_run_id(task_id)
+    started_at = _now_utc_iso()
+    artifacts: List[str] = []
+    operations: List[Dict[str, Any]] = []
+    result: Dict[str, Any]
+
+    try:
+        validated = validate_execution_plan(plan=plan, workspace_root=workspace_root)
+        steps = validated["steps"]
+
+        for idx, step in enumerate(steps, start=1):
+            action = step["action"]
+            rel_path = step["path"]
+            abs_path = workspace_root / rel_path
+
+            op: Dict[str, Any] = {
+                "index": idx,
+                "action": action,
+                "path": rel_path,
+                "status": "ok",
+            }
+
+            if action == "read":
+                if not abs_path.exists():
+                    raise FileNotFoundError(f"read target not found: {rel_path}")
+                content = _read_text(abs_path)
+                op["chars"] = len(content)
+
+            elif action == "write":
+                content = step["content"]
+                _write_text(abs_path, content)
+                op["chars"] = len(content)
+                if rel_path not in artifacts:
+                    artifacts.append(rel_path)
+
+            elif action == "append":
+                content = step["content"]
+                _append_text(abs_path, content)
+                op["chars"] = len(content)
+                if rel_path not in artifacts:
+                    artifacts.append(rel_path)
+
+            else:
+                raise RuntimeError(f"unsupported action after validation: {action}")
+
+            operations.append(op)
+
+        result = {
+            "ok": True,
+            "operation_count": len(operations),
+            "artifacts": artifacts,
+            "artifact_paths": artifacts,
+            "operations": operations,
+            "validation": validated["limits"],
+        }
+
+        summary = {
+            "run_id": run_id,
+            "timestamp": started_at,
+            "task_id": task_id or "manual",
+            "step_count": len(steps),
+            "steps": steps,
+            "artifacts": artifacts,
+            "result": result,
+            "error": None,
+            "operation_count": len(operations),
+        }
+        run_log_path = _write_run_summary(summary)
+        result["run_log_path"] = run_log_path
+        return result
+
+    except Exception as e:
+        failed_result = {
+            "ok": False,
+            "operation_count": len(operations),
+            "artifacts": artifacts,
+            "artifact_paths": artifacts,
+            "operations": operations,
+            "error": f"{type(e).__name__}: {e}",
+        }
+        summary = {
+            "run_id": run_id,
+            "timestamp": started_at,
+            "task_id": task_id or "manual",
+            "step_count": len(plan.get('steps', [])) if isinstance(plan, dict) else 0,
+            "steps": plan.get("steps", []) if isinstance(plan, dict) else [],
+            "artifacts": artifacts,
+            "result": failed_result,
+            "error": failed_result["error"],
+            "operation_count": len(operations),
+        }
+        run_log_path = _write_run_summary(summary)
+        failed_result["run_log_path"] = run_log_path
+        raise RuntimeError(json.dumps(failed_result, ensure_ascii=False))
+
+
+# 互換エイリアス
+execute_plan = run_execution_plan
+execute = run_execution_plan
+run = run_execution_plan
+
+
+if __name__ == "__main__":
+    sample_plan = {
+        "steps": [
+            {"action": "write", "path": "notes/a.txt", "content": "aaa\n"},
+            {"action": "write", "path": "notes/b.txt", "content": "bbb\n"},
+            {"action": "read", "path": "notes/a.txt"},
+            {"action": "append", "path": "notes/b.txt", "content": "ccc\n"},
+        ]
+    }
+    out = run_execution_plan(sample_plan, task_id="manual-smoke-test")
+    print(json.dumps(out, ensure_ascii=False, indent=2))

@@ -1,0 +1,25 @@
+{
+  "run_id": "run-20260310T052444630574Z-5bd3d1-task-20260310-052444-630157-8bb1de",
+  "timestamp": "2026-03-10T05:24:44+00:00",
+  "task_id": "task-20260310-052444-630157-8bb1de",
+  "step_count": 1,
+  "steps": [
+    {
+      "action": "write",
+      "path": "notes/overwrite_guard.txt",
+      "content": "again",
+      "overwrite": false
+    }
+  ],
+  "artifacts": [],
+  "result": {
+    "ok": false,
+    "operation_count": 0,
+    "artifacts": [],
+    "artifact_paths": [],
+    "operations": [],
+    "error": "FileExistsError: file already exists; use aos write! to overwrite: notes/overwrite_guard.txt"
+  },
+  "error": "FileExistsError: file already exists; use aos write! to overwrite: notes/overwrite_guard.txt",
+  "operation_count": 0
+}

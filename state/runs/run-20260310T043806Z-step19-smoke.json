@@ -1,0 +1,69 @@
+{
+  "run_id": "run-20260310T043806Z-step19-smoke",
+  "timestamp": "2026-03-10T04:38:06+00:00",
+  "task_id": "step19-smoke",
+  "step_count": 3,
+  "steps": [
+    {
+      "action": "write",
+      "path": "notes/validator_a.txt",
+      "content": "hello\n"
+    },
+    {
+      "action": "append",
+      "path": "notes/validator_a.txt",
+      "content": "world\n"
+    },
+    {
+      "action": "read",
+      "path": "notes/validator_a.txt"
+    }
+  ],
+  "artifacts": [
+    "notes/validator_a.txt"
+  ],
+  "result": {
+    "ok": true,
+    "operation_count": 3,
+    "artifacts": [
+      "notes/validator_a.txt"
+    ],
+    "artifact_paths": [
+      "notes/validator_a.txt"
+    ],
+    "operations": [
+      {
+        "index": 1,
+        "action": "write",
+        "path": "notes/validator_a.txt",
+        "status": "ok",
+        "chars": 6
+      },
+      {
+        "index": 2,
+        "action": "append",
+        "path": "notes/validator_a.txt",
+        "status": "ok",
+        "chars": 6
+      },
+      {
+        "index": 3,
+        "action": "read",
+        "path": "notes/validator_a.txt",
+        "status": "ok",
+        "chars": 12
+      }
+    ],
+    "validation": {
+      "max_steps": 10,
+      "max_content_chars": 5000,
+      "allowed_actions": [
+        "append",
+        "read",
+        "write"
+      ]
+    }
+  },
+  "error": null,
+  "operation_count": 3
+}

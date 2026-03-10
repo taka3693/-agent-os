@@ -1,0 +1,16 @@
+skill_name: research
+purpose: 情報を調査し要点を整理する
+
+inputs:
+  - name: question
+    type: string
+
+outputs:
+  - name: findings
+    type: list[string]
+
+invoke_when:
+  - 調査が必要なとき
+
+avoid_when:
+  - 判断が主目的のとき

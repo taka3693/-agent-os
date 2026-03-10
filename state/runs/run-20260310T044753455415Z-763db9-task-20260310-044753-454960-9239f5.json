@@ -1,0 +1,69 @@
+{
+  "run_id": "run-20260310T044753455415Z-763db9-task-20260310-044753-454960-9239f5",
+  "timestamp": "2026-03-10T04:47:53+00:00",
+  "task_id": "task-20260310-044753-454960-9239f5",
+  "step_count": 3,
+  "steps": [
+    {
+      "action": "write",
+      "path": "notes/hook_success.txt",
+      "content": "via-tool\n"
+    },
+    {
+      "action": "append",
+      "path": "notes/hook_success.txt",
+      "content": "ok\n"
+    },
+    {
+      "action": "read",
+      "path": "notes/hook_success.txt"
+    }
+  ],
+  "artifacts": [
+    "notes/hook_success.txt"
+  ],
+  "result": {
+    "ok": true,
+    "operation_count": 3,
+    "artifacts": [
+      "notes/hook_success.txt"
+    ],
+    "artifact_paths": [
+      "notes/hook_success.txt"
+    ],
+    "operations": [
+      {
+        "index": 1,
+        "action": "write",
+        "path": "notes/hook_success.txt",
+        "status": "ok",
+        "chars": 9
+      },
+      {
+        "index": 2,
+        "action": "append",
+        "path": "notes/hook_success.txt",
+        "status": "ok",
+        "chars": 3
+      },
+      {
+        "index": 3,
+        "action": "read",
+        "path": "notes/hook_success.txt",
+        "status": "ok",
+        "chars": 12
+      }
+    ],
+    "validation": {
+      "max_steps": 10,
+      "max_content_chars": 5000,
+      "allowed_actions": [
+        "append",
+        "read",
+        "write"
+      ]
+    }
+  },
+  "error": null,
+  "operation_count": 3
+}

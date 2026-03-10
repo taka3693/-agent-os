@@ -1,0 +1,16 @@
+skill_name: execution
+purpose: 決定された方針を実行する
+
+inputs:
+  - name: goal
+    type: string
+
+outputs:
+  - name: result
+    type: string
+
+invoke_when:
+  - 実装や作業を進めるとき
+
+avoid_when:
+  - 方針が未確定のとき

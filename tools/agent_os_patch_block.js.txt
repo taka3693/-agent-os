@@ -1,0 +1,130 @@
+        // AGENT_OS_PATCH_BEGIN
+	const ROUTE_BRIDGE_PATH = "/home/milky/agent-os/bridge/route_to_task.py";
+	const RESEARCH_RUNNER_PATH = "/home/milky/agent-os/runner/run_research_task.py";
+	const RESEARCH_RUNNER_TIMEOUT_MS = 3e4;
+	const ROUTE_ALLOWED_SKILLS = [
+		"critique",
+		"decision",
+		"experiment",
+		"execution",
+		"research",
+		"retrospective"
+	];
+	const callRouteBridge = (text) => new Promise((resolve, reject) => {
+		const child = spawn("/usr/bin/python3", [ROUTE_BRIDGE_PATH], {
+			stdio: ["pipe", "pipe", "pipe"]
+		});
+		let stdout = "";
+		let stderr = "";
+		child.stdout.on("data", (d) => {
+			stdout += String(d);
+		});
+		child.stderr.on("data", (d) => {
+			stderr += String(d);
+		});
+		child.on("error", (err) => {
+			reject(new Error(`bridge spawn error: ${String(err)}`));
+		});
+		child.on("close", (code) => {
+			if (code !== 0) {
+				reject(new Error(`bridge exit=${code} stderr=${stderr.trim()}`));
+				return;
+			}
+			try {
+				resolve(JSON.parse(stdout.trim()));
+			} catch (err) {
+				reject(new Error(`bridge json parse error: ${String(err)} raw=${stdout}`));
+			}
+		});
+		const payload = {
+			text,
+			allowed_skills: ROUTE_ALLOWED_SKILLS,
+			chain_count: 0,
+			source: "telegram"
+		};
+		child.stdin.write(JSON.stringify(payload));
+		child.stdin.end();
+	});
+	const callResearchRunner = (taskPath) => new Promise((resolve, reject) => {
+		const child = spawn("/usr/bin/python3", [RESEARCH_RUNNER_PATH, taskPath], {
+			stdio: ["ignore", "pipe", "pipe"]
+		});
+		let stdout = "";
+		let stderr = "";
+		let timedOut = false;
+		const timer = setTimeout(() => {
+			timedOut = true;
+			try {
+				child.kill("SIGKILL");
+			} catch {}
+		}, RESEARCH_RUNNER_TIMEOUT_MS);
+		child.stdout.on("data", (d) => {
+			stdout += String(d);
+		});
+		child.stderr.on("data", (d) => {
+			stderr += String(d);
+		});
+		child.on("error", (err) => {
+			clearTimeout(timer);
+			reject(new Error(`runner spawn error: ${String(err)}`));
+		});
+		child.on("close", (code) => {
+			clearTimeout(timer);
+			if (timedOut) {
+				reject(new Error("runner timeout"));
+				return;
+			}
+			if (code !== 0) {
+				reject(new Error(`runner exit=${code} stderr=${stderr.trim()}`));
+				return;
+			}
+			try {
+				resolve(JSON.parse(stdout.trim()));
+			} catch (err) {
+				reject(new Error(`runner json parse error: ${String(err)} raw=${stdout}`));
+			}
+		});
+	});
+	const readTaskJson = async (taskPath) => {
+		const raw = await fs$1.readFile(taskPath, "utf-8");
+		return JSON.parse(raw);
+	};
+const processInboundMessage = async (params) => {
+		const { ctx, msg, chatId, resolvedThreadId, dmThreadId, storeAllowFrom, sendOversizeWarning, oversizeLogMessage } = params;
+		const text = typeof msg.text === "string" ? msg.text : void 0;
+                console.error("[agent-os] processInboundMessage text:", text);
+                if (text && text.trim() && !text.trim().startsWith("/")) {
+                        try {
+                                const bridgeResult = await callRouteBridge(text);
+                                console.error("[agent-os] bridge result:", JSON.stringify(bridgeResult));
+                                if (bridgeResult?.ok && bridgeResult.selected_skill === "research") {
+                                        const taskPath = bridgeResult.task_path;
+                                        const taskId = bridgeResult.task_id ?? "unknown-task";
+                                        console.error("[agent-os] calling research runner:", taskPath);
+                                        await callResearchRunner(taskPath);
+                                        const taskObj = await readTaskJson(taskPath);
+                                        const summary = taskObj?.result?.summary;
+                                        if (typeof summary === "string" && summary.trim()) {
+                                                await bot.api.sendMessage(chatId, `research completed: ${summary} (task: ${taskId})`);
+                                        } else {
+                                                await bot.api.sendMessage(chatId, `research completed: (task: ${taskId})`);
+                                        }
+                                        return;
+                                }
+                                if (bridgeResult?.ok && bridgeResult.selected_skill !== "research") {
+                                        if (typeof bridgeResult.reply === "string" && bridgeResult.reply.trim()) {
+                                                await bot.api.sendMessage(chatId, bridgeResult.reply);
+                                                return;
+                                        }
+                                        await bot.api.sendMessage(chatId, `routed task created: ${bridgeResult.task_id ?? "unknown"}`);
+                                        return;
+                                }
+                                if (bridgeResult && !bridgeResult.ok) {
+                                        await bot.api.sendMessage(chatId, "task creation failed");
+                                        return;
+                                }
+                        } catch (err) {
+                                console.error("[agent-os] processInboundMessage bridge/runner failed:", String(err));
+                        }
+                }
+        // AGENT_OS_PATCH_END

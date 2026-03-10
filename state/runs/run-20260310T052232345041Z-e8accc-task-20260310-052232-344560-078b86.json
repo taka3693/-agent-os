@@ -1,0 +1,48 @@
+{
+  "run_id": "run-20260310T052232345041Z-e8accc-task-20260310-052232-344560-078b86",
+  "timestamp": "2026-03-10T05:22:32+00:00",
+  "task_id": "task-20260310-052232-344560-078b86",
+  "step_count": 1,
+  "steps": [
+    {
+      "action": "write",
+      "path": "notes/overwrite_guard.txt",
+      "content": "base",
+      "overwrite": true
+    }
+  ],
+  "artifacts": [
+    "notes/overwrite_guard.txt"
+  ],
+  "result": {
+    "ok": true,
+    "operation_count": 1,
+    "artifacts": [
+      "notes/overwrite_guard.txt"
+    ],
+    "artifact_paths": [
+      "notes/overwrite_guard.txt"
+    ],
+    "operations": [
+      {
+        "index": 1,
+        "action": "write",
+        "path": "notes/overwrite_guard.txt",
+        "status": "ok",
+        "chars": 4,
+        "overwrite": true
+      }
+    ],
+    "validation": {
+      "max_steps": 10,
+      "max_content_chars": 5000,
+      "allowed_actions": [
+        "append",
+        "read",
+        "write"
+      ]
+    }
+  },
+  "error": null,
+  "operation_count": 1
+}

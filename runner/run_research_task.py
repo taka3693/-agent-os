@@ -1,0 +1,287 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import json
+import sys
+import traceback
+from pathlib import Path
+from typing import Any, Dict
+from datetime import datetime, timezone
+
+from skills.research.research_impl import run_research
+from skills.decision.decision_impl import run_decision
+from skills.execution.execution_impl import run_execution
+from skills.critique.critique_impl import run_critique
+from skills.retrospective.retrospective_impl import run_retrospective
+
+
+VALID_SKILLS = {"research", "decision", "execution", "critique", "retrospective"}
+MAX_CHAIN_COUNT = 3
+
+
+def now_iso() -> str:
+    return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+
+
+def select_model(skill: str | None) -> str:
+    if skill in ("research", "decision"):
+        return "zai/glm-5"
+    if skill in ("execution", "critique"):
+        return "anthropic/claude-sonnet-4-6"
+    if skill == "retrospective":
+        return "anthropic/claude-opus-4-6"
+    return "zai/glm-5"
+
+
+def load_task(task_path: Path) -> Dict[str, Any]:
+    return json.loads(task_path.read_text())
+
+
+def save_task(task_path: Path, task: Dict[str, Any]) -> None:
+    task["updated_at"] = now_iso()
+    task_path.write_text(json.dumps(task, ensure_ascii=False, indent=2) + "\n")
+
+
+def extract_query(task: Dict[str, Any]) -> str:
+    for key in ("query", "input", "prompt", "text", "input_text"):
+        v = task.get(key)
+        if isinstance(v, str) and v.strip():
+            return v.strip()
+
+    run_input = task.get("run_input")
+    if isinstance(run_input, dict):
+        for key in ("query", "input", "prompt", "text"):
+            v = run_input.get(key)
+            if isinstance(v, str) and v.strip():
+                return v.strip()
+
+    payload = task.get("payload")
+    if isinstance(payload, dict):
+        for key in ("query", "input", "prompt", "text", "input_text"):
+            v = payload.get(key)
+            if isinstance(v, str) and v.strip():
+                return v.strip()
+
+        run_input = payload.get("run_input")
+        if isinstance(run_input, dict):
+            for key in ("query", "input", "prompt", "text"):
+                v = run_input.get(key)
+                if isinstance(v, str) and v.strip():
+                    return v.strip()
+
+    raise RuntimeError("task query not found")
+
+
+def extract_selected_skill(task: Dict[str, Any]) -> str:
+    for key in ("selected_skill", "skill", "type"):
+        v = task.get(key)
+        if isinstance(v, str) and v.strip():
+            return v.strip()
+
+    payload = task.get("payload")
+    if isinstance(payload, dict):
+        for key in ("selected_skill", "skill", "type"):
+            v = payload.get(key)
+            if isinstance(v, str) and v.strip():
+                return v.strip()
+
+    raise RuntimeError("selected_skill not found")
+
+
+def run_selected_skill(selected_skill: str, query: str) -> Dict[str, Any]:
+    skill = (selected_skill or "").strip()
+
+    if skill == "research":
+        return run_research(query)
+    if skill == "decision":
+        return run_decision(query)
+    if skill == "execution":
+        return run_execution(query)
+    if skill == "critique":
+        return run_critique(query)
+    if skill == "retrospective":
+        return run_retrospective(query)
+
+    raise RuntimeError(f"unsupported selected_skill: {skill}")
+
+
+def next_task_id(tasks_dir: Path) -> str:
+    date_str = datetime.now(timezone.utc).strftime("%Y%m%d")
+    prefix = f"task-{date_str}-"
+    max_seq = 0
+    for p in tasks_dir.glob(f"{prefix}*.json"):
+        stem = p.stem
+        parts = stem.split("-")
+        if len(parts) != 3:
+            continue
+        seq = parts[2]
+        if seq.isdigit():
+            max_seq = max(max_seq, int(seq))
+    return f"task-{date_str}-{max_seq + 1:03d}"
+
+
+def determine_next_skill(current_skill: str, result: Dict[str, Any]) -> str | None:
+    if current_skill == "decision":
+        next_skill = result.get("next_skill")
+        if next_skill in VALID_SKILLS:
+            return next_skill
+        return None
+    if current_skill == "execution":
+        return "critique"
+    if current_skill == "critique":
+        return "retrospective"
+    return None
+
+
+def collect_execution_diff(result: Dict[str, Any]) -> str:
+    parts = []
+    ops = result.get("operations") or []
+    if isinstance(ops, list):
+        for op in ops:
+            if not isinstance(op, dict):
+                continue
+            diff = op.get("diff")
+            if isinstance(diff, str) and diff.strip():
+                parts.append(diff.strip())
+
+    if not parts:
+        op = result.get("operation") or {}
+        if isinstance(op, dict):
+            diff = op.get("diff")
+            if isinstance(diff, str) and diff.strip():
+                parts.append(diff.strip())
+
+    return "\n\n".join(parts)[:4000]
+
+
+def build_next_query(current_skill: str, task: Dict[str, Any], result: Dict[str, Any]) -> str:
+    original_query = extract_query(task)
+
+    if current_skill == "decision":
+        return (result.get("next_query") if isinstance(result, dict) else None) or original_query
+
+    if current_skill == "execution":
+        artifact_paths = result.get("artifacts") or []
+        artifact_path = artifact_paths[0] if artifact_paths else None
+        return json.dumps({
+            "artifact_path": artifact_path,
+            "artifact_paths": artifact_paths,
+            "source_query": original_query,
+            "execution_summary": result.get("summary"),
+            "operation": result.get("operation"),
+            "operations": result.get("operations", []),
+            "diff": collect_execution_diff(result),
+            "chain": ["decision", "execution", "critique"],
+        }, ensure_ascii=False)
+
+    if current_skill == "critique":
+        artifact_paths = result.get("artifact_paths") or []
+        artifact_path = artifact_paths[0] if artifact_paths else result.get("artifact_path")
+        return json.dumps({
+            "artifact_path": artifact_path,
+            "artifact_paths": artifact_paths,
+            "critique_decision": result.get("decision"),
+            "critique_issues": result.get("issues", []),
+            "chain": ["decision", "execution", "critique", "retrospective"],
+        }, ensure_ascii=False)
+
+    return original_query
+
+
+def maybe_create_followup_task(task_path: Path, task: Dict[str, Any], result: Dict[str, Any]) -> str | None:
+    current_skill = task.get("selected_skill")
+    chain_count = int(task.get("chain_count", 0))
+
+    if chain_count >= MAX_CHAIN_COUNT:
+        return None
+
+    next_skill = determine_next_skill(current_skill, result)
+    if next_skill is None:
+        return None
+
+    tasks_dir = task_path.parent
+    child_id = next_task_id(tasks_dir)
+    ts = now_iso()
+    query = build_next_query(current_skill, task, result)
+
+    child = {
+        "task_id": child_id,
+        "created_at": ts,
+        "updated_at": ts,
+        "source": task.get("source", "agent_os"),
+        "input_text": query,
+        "selected_skill": next_skill,
+        "route_reason": f"chained_from:{task.get('task_id', task_path.stem)}",
+        "status": "queued",
+        "chain_count": chain_count + 1,
+        "allowed_skills": [next_skill],
+        "model": select_model(next_skill),
+        "run_input": {"query": query},
+        "result": None,
+        "error": None,
+        "parent_task_id": task.get("task_id", task_path.stem),
+    }
+
+    child_path = tasks_dir / f"{child_id}.json"
+    child_path.write_text(json.dumps(child, ensure_ascii=False, indent=2) + "\n")
+    return str(child_path)
+
+
+def main() -> int:
+    if len(sys.argv) != 2:
+        print("usage: run_research_task.py /path/to/task.json", file=sys.stderr)
+        return 2
+
+    task_path = Path(sys.argv[1]).resolve()
+    if not task_path.exists():
+        print(f"task file not found: {task_path}", file=sys.stderr)
+        return 2
+
+    task = load_task(task_path)
+    task["status"] = "running"
+    save_task(task_path, task)
+
+    try:
+        selected_skill = extract_selected_skill(task)
+        query = extract_query(task)
+        result = run_selected_skill(selected_skill, query)
+
+        task["status"] = "completed"
+        task["result"] = result
+        task["selected_skill"] = selected_skill
+
+        child_path = maybe_create_followup_task(task_path, task, result)
+        if child_path:
+            task["next_task_path"] = child_path
+
+        save_task(task_path, task)
+
+        print(json.dumps({
+            "ok": True,
+            "task_path": str(task_path),
+            "selected_skill": selected_skill,
+            "status": task["status"],
+            "next_task_path": task.get("next_task_path"),
+        }, ensure_ascii=False))
+        return 0
+
+    except Exception as e:
+        task["status"] = "failed"
+        task["error"] = {
+            "type": e.__class__.__name__,
+            "message": str(e),
+            "traceback": traceback.format_exc(),
+        }
+        save_task(task_path, task)
+
+        print(json.dumps({
+            "ok": False,
+            "task_path": str(task_path),
+            "status": task["status"],
+            "error": str(e),
+        }, ensure_ascii=False), file=sys.stderr)
+        return 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

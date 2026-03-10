@@ -1,0 +1,182 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import sys
+from pathlib import Path
+from typing import Any, Dict
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+WORKSPACE_ROOT = PROJECT_ROOT / "workspace"
+
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+from router.route_to_task import route_message_to_task
+from runner.run_execution_task import run_task as run_execution_task_run_task
+
+
+HELP_TEXT = """AgentOS 使い方
+
+実行コマンド
+aos read <path>
+aos cat <path>
+
+aos write <path>
+<content>
+
+aos write! <path>
+<content>   # 既存ファイルを上書き
+
+aos append <path>
+<content>
+
+aos json {"steps":[...]}
+
+閲覧コマンド
+aos ls
+aos ls <dir>
+aos tree
+aos tree <dir>
+aos pwd
+aos root
+
+互換コマンド
+aos decision: read <path>
+aos decision: write <path>
+<content>
+aos decision: append <path>
+<content>
+aos decision: json {"steps":[...]}
+
+例
+aos cat notes/hook_success.txt
+aos pwd
+aos ls notes
+aos tree notes
+"""
+
+
+def is_help_command(text: str) -> bool:
+    s = (text or "").strip().lower()
+    return s in {"aos help", "aos usage"}
+
+
+def is_meta_command(text: str) -> bool:
+    s = (text or "").strip().lower()
+    return s in {"aos pwd", "aos root"}
+
+
+def parse_meta_command(text: str) -> Dict[str, Any]:
+    s = (text or "").strip().lower()
+    if s in {"aos pwd", "aos root"}:
+        return {
+            "ok": True,
+            "mode": "meta",
+            "meta_action": "workspace_root",
+            "workspace_root": str(WORKSPACE_ROOT),
+        }
+    return {"ok": False, "mode": "pass", "reason": "not_meta_command"}
+
+
+def is_browse_command(text: str) -> bool:
+    s = (text or "").strip().lower()
+    return s == "aos ls" or s.startswith("aos ls ") or s == "aos tree" or s.startswith("aos tree ")
+
+
+def parse_browse_command(text: str) -> Dict[str, Any]:
+    s = (text or "").strip()
+    lower = s.lower()
+
+    if lower == "aos ls":
+        return {"ok": True, "mode": "browse", "browse_action": "ls", "path": "."}
+
+    if lower.startswith("aos ls "):
+        return {"ok": True, "mode": "browse", "browse_action": "ls", "path": s[7:].strip() or "."}
+
+    if lower == "aos tree":
+        return {"ok": True, "mode": "browse", "browse_action": "tree", "path": "."}
+
+    if lower.startswith("aos tree "):
+        return {"ok": True, "mode": "browse", "browse_action": "tree", "path": s[9:].strip() or "."}
+
+    return {"ok": False, "mode": "pass", "reason": "not_browse_command"}
+
+
+def is_execution_command(text: str) -> bool:
+    s = (text or "").strip().lower()
+    if not s:
+        return False
+
+    prefixes = (
+        "aos decision: json",
+        "aos decision: write!",
+        "aos decision: write",
+        "aos decision: append",
+        "aos decision: read",
+        "aos json",
+        "aos write!",
+        "aos write",
+        "aos append",
+        "aos read",
+        "aos cat",
+    )
+    return any(s.startswith(p) for p in prefixes)
+
+
+def summarize_task(task: Dict[str, Any]) -> Dict[str, Any]:
+    return {
+        "ok": task.get("status") == "completed",
+        "mode": "execution",
+        "task_id": task.get("id"),
+        "status": task.get("status"),
+        "error": task.get("error"),
+        "operation_count": task.get("operation_count", 0),
+        "artifacts": task.get("artifacts", []),
+        "run_log_path": task.get("run_log_path"),
+    }
+
+
+def handle_message(message_text: str) -> Dict[str, Any]:
+    if is_help_command(message_text):
+        return {
+            "ok": True,
+            "mode": "help",
+            "reply_text": HELP_TEXT,
+        }
+
+    if is_meta_command(message_text):
+        return parse_meta_command(message_text)
+
+    if is_browse_command(message_text):
+        return parse_browse_command(message_text)
+
+    if not is_execution_command(message_text):
+        return {
+            "ok": False,
+            "mode": "pass",
+            "reason": "not_execution_command",
+        }
+
+    routed = route_message_to_task(message_text)
+    task_path = Path(routed["task_path"])
+    task = run_execution_task_run_task(task_path)
+
+    out = summarize_task(task)
+    out["task_path"] = str(task_path)
+    return out
+
+
+def main() -> int:
+    if len(sys.argv) < 2:
+        print("usage: telegram_agent_os_entry.py '<message text>'", file=sys.stderr)
+        return 2
+
+    message_text = sys.argv[1]
+    result = handle_message(message_text)
+    import json
+    print(json.dumps(result, ensure_ascii=False, indent=2))
+    return 0 if result.get("ok") else 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

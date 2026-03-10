@@ -1,0 +1,31 @@
+{
+  "task_id": "task-20260310-020",
+  "created_at": "2026-03-10T03:49:50+00:00",
+  "updated_at": "2026-03-10T03:49:51+00:00",
+  "source": "telegram",
+  "input_text": "run live telegram finite-chain test after prefix fix",
+  "selected_skill": "decision",
+  "route_reason": "fallback",
+  "status": "completed",
+  "chain_count": 0,
+  "allowed_skills": [
+    "decision"
+  ],
+  "model": "zai/glm-5",
+  "run_input": {
+    "query": "run live telegram finite-chain test after prefix fix"
+  },
+  "result": {
+    "summary": "decision dry-run completed for: run live telegram finite-chain test after prefix fix",
+    "status": "ok",
+    "decision": "proceed",
+    "reasoning": [
+      "query was received",
+      "decision skill stub is active",
+      "real planning policy is not implemented yet"
+    ],
+    "next_skill": "execution"
+  },
+  "error": null,
+  "next_task_path": "/home/milky/agent-os/state/tasks/task-20260310-021.json"
+}

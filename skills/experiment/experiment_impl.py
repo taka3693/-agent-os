@@ -1,0 +1,78 @@
+from __future__ import annotations
+
+from typing import Any, Dict, List
+
+
+EXPERIMENT_HINTS = [
+    "比較条件を固定する",
+    "評価指標を先に決める",
+    "1回の変更は1変数に絞る",
+    "実行前に成功条件と中止条件を置く",
+]
+
+
+def _normalize_query(query: Any) -> str:
+    if query is None:
+        return ""
+    return str(query).strip()
+
+
+def _infer_hypothesis(query: str) -> str:
+    if not query:
+        return "条件を整理して小さく試せば、不確実性を下げて次の判断精度を上げられる。"
+    return f"{query} を小さく検証すれば、採用可否の判断材料を短時間で得られる。"
+
+
+def _make_experiments(query: str) -> List[str]:
+    if not query:
+        return [
+            "対象・目的・制約を書き出す。",
+            "評価指標を1〜3個に限定する。",
+            "最小の検証手順を1本だけ実行する。",
+        ]
+
+    experiments: List[str] = []
+
+    if not any(k in query for k in ["評価", "基準", "KPI", "指標"]):
+        experiments.append("評価指標を先に決める。例: 速度・精度・コスト。")
+
+    if not any(k in query for k in ["比較", "A/B", "差分", "before", "after"]):
+        experiments.append("比較対象を固定する。現状案 vs 変更案の2条件に絞る。")
+
+    if not any(k in query for k in ["制約", "期限", "コスト", "リスク"]):
+        experiments.append("制約条件を明示する。期限・許容コスト・失敗条件を定義する。")
+
+    experiments.append("変更する変数を1つだけ選ぶ。複数同時変更は禁止。")
+    experiments.append("実行ログを残す。入力条件・結果・所感を3行で記録する。")
+    experiments.append("結果を採用 / 保留 / 破棄の3択で判定する。")
+
+    uniq: List[str] = []
+    for x in experiments:
+        if x not in uniq:
+            uniq.append(x)
+
+    return uniq[:5]
+
+
+def run(query: str, **kwargs: Any) -> Dict[str, Any]:
+    q = _normalize_query(query)
+    return {
+        "ok": True,
+        "skill": "experiment",
+        "query": q,
+        "summary": "入力内容をもとに、仮説と最小実験プランを整理した。",
+        "hypothesis": _infer_hypothesis(q),
+        "experiments": _make_experiments(q),
+        "notes": EXPERIMENT_HINTS,
+    }
+
+
+def execute(query: str, **kwargs: Any) -> Dict[str, Any]:
+    return run(query, **kwargs)
+
+
+def experiment(query: str, **kwargs: Any) -> Dict[str, Any]:
+    return run(query, **kwargs)
+
+def run_experiment(query: str, **kwargs):
+    return run(query, **kwargs)

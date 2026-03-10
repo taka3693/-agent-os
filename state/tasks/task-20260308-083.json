@@ -1,0 +1,20 @@
+{
+  "task_id": "task-20260308-083",
+  "created_at": "2026-03-08T19:17:01+00:00",
+  "updated_at": "2026-03-08T19:17:01+00:00",
+  "source": "telegram",
+  "input_text": "復旧確認",
+  "selected_skill": "research",
+  "route_reason": "fallback",
+  "status": "queued",
+  "chain_count": 0,
+  "allowed_skills": [
+    "research"
+  ],
+  "model": "zai/glm-5",
+  "run_input": {
+    "query": "復旧確認"
+  },
+  "result": null,
+  "error": null
+}

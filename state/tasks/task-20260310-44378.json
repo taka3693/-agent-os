@@ -1,0 +1,29 @@
+{
+  "task_id": "task-20260310-44378",
+  "created_at": "2026-03-10T08:56:49+00:00",
+  "updated_at": "2026-03-10T08:56:49+00:00",
+  "source": "telegram",
+  "input_text": "AとBを比較して決めたい",
+  "selected_skill": "decision",
+  "route_reason": "decision_keyword_match",
+  "status": "completed",
+  "chain_count": 0,
+  "allowed_skills": null,
+  "model": "zai/glm-5",
+  "run_input": {
+    "query": "AとBを比較して決めたい"
+  },
+  "result": {
+    "summary": "意思決定の下準備を完了した。候補不足のため、比較対象の明確化が必要。",
+    "findings": [
+      "依頼文を確認: AとBを比較して決めたい",
+      "判断軸を抽出: 価値 / コスト / 速度 / リスク の4軸で評価する",
+      "次アクション案: 候補を2〜5個に明示してから比較表を作成する"
+    ]
+  },
+  "error": null,
+  "query": "AとBを比較して決めたい",
+  "text": "AとBを比較して決めたい",
+  "started_at": "2026-03-10T17:56:49.472762+09:00",
+  "completed_at": "2026-03-10T17:56:49.473070+09:00"
+}

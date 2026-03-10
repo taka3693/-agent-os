@@ -1,0 +1,39 @@
+{
+  "run_id": "run-20260310T051253705975Z-6e3d8e-task-20260310-051253-705529-06d562",
+  "timestamp": "2026-03-10T05:12:53+00:00",
+  "task_id": "task-20260310-051253-705529-06d562",
+  "step_count": 1,
+  "steps": [
+    {
+      "action": "read",
+      "path": "notes/hook_success.txt"
+    }
+  ],
+  "artifacts": [],
+  "result": {
+    "ok": true,
+    "operation_count": 1,
+    "artifacts": [],
+    "artifact_paths": [],
+    "operations": [
+      {
+        "index": 1,
+        "action": "read",
+        "path": "notes/hook_success.txt",
+        "status": "ok",
+        "chars": 12
+      }
+    ],
+    "validation": {
+      "max_steps": 10,
+      "max_content_chars": 5000,
+      "allowed_actions": [
+        "append",
+        "read",
+        "write"
+      ]
+    }
+  },
+  "error": null,
+  "operation_count": 1
+}

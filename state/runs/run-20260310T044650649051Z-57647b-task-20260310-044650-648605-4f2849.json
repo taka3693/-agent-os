@@ -1,0 +1,69 @@
+{
+  "run_id": "run-20260310T044650649051Z-57647b-task-20260310-044650-648605-4f2849",
+  "timestamp": "2026-03-10T04:46:50+00:00",
+  "task_id": "task-20260310-044650-648605-4f2849",
+  "step_count": 3,
+  "steps": [
+    {
+      "action": "write",
+      "path": "notes/bridge_success.txt",
+      "content": "bridge-ok\n"
+    },
+    {
+      "action": "append",
+      "path": "notes/bridge_success.txt",
+      "content": "done\n"
+    },
+    {
+      "action": "read",
+      "path": "notes/bridge_success.txt"
+    }
+  ],
+  "artifacts": [
+    "notes/bridge_success.txt"
+  ],
+  "result": {
+    "ok": true,
+    "operation_count": 3,
+    "artifacts": [
+      "notes/bridge_success.txt"
+    ],
+    "artifact_paths": [
+      "notes/bridge_success.txt"
+    ],
+    "operations": [
+      {
+        "index": 1,
+        "action": "write",
+        "path": "notes/bridge_success.txt",
+        "status": "ok",
+        "chars": 10
+      },
+      {
+        "index": 2,
+        "action": "append",
+        "path": "notes/bridge_success.txt",
+        "status": "ok",
+        "chars": 5
+      },
+      {
+        "index": 3,
+        "action": "read",
+        "path": "notes/bridge_success.txt",
+        "status": "ok",
+        "chars": 15
+      }
+    ],
+    "validation": {
+      "max_steps": 10,
+      "max_content_chars": 5000,
+      "allowed_actions": [
+        "append",
+        "read",
+        "write"
+      ]
+    }
+  },
+  "error": null,
+  "operation_count": 3
+}

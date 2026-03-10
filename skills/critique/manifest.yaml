@@ -1,0 +1,16 @@
+skill_name: critique
+purpose: 既存案の弱点や見落としを短く洗い出す
+
+inputs:
+  - name: plan_text
+    type: string
+
+outputs:
+  - name: issues
+    type: list[string]
+
+invoke_when:
+  - 既存案をレビューするとき
+
+avoid_when:
+  - 案がまだ存在しないとき

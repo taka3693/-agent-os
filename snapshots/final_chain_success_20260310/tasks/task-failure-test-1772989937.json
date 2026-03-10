@@ -1,0 +1,13 @@
+{
+  "task_id": "task-failure-test-1772989937",
+  "source": "telegram",
+  "selected_skill": "research",
+  "status": "failed",
+  "run_input": {},
+  "result": null,
+  "error": {
+    "stage": "run",
+    "message": "query is required"
+  },
+  "updated_at": "2026-03-08T17:12:17+00:00"
+}

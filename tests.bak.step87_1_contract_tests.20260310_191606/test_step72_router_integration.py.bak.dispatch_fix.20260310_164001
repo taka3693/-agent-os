@@ -1,0 +1,58 @@
+#!/usr/bin/env python3
+import json
+import subprocess
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+allowed_skills = {"critique", "decision", "experiment", "execution", "research", "retrospective"}
+
+cmd = [
+    sys.executable,
+    str(ROOT / "tools" / "run_agent_os_request.py"),
+    "aos router 比較して整理したい",
+]
+
+cp = subprocess.run(cmd, cwd=str(ROOT), text=True, capture_output=True)
+
+print("=== returncode ===")
+print(cp.returncode)
+print("=== stdout ===")
+print(cp.stdout)
+if cp.stderr:
+    print("=== stderr ===")
+    print(cp.stderr)
+
+assert cp.returncode == 0, f"router command should succeed rc=0, got {cp.returncode}"
+
+obj = json.loads(cp.stdout)
+
+assert obj.get("mode") == "router", f"unexpected mode: {obj.get('mode')}"
+assert obj.get("ok") is True, "router result should be ok=true"
+assert obj.get("status") == "completed", f"unexpected status: {obj.get('status')}"
+
+reply_text = obj.get("reply_text")
+telegram_reply_text = obj.get("telegram_reply_text")
+router_result = obj.get("router_result") or {}
+
+assert isinstance(reply_text, str) and reply_text.startswith("router 受付完了"), "reply_text should be router summary"
+assert isinstance(telegram_reply_text, str) and telegram_reply_text == reply_text, "non-batch router should reuse reply_text for telegram"
+assert isinstance(router_result, dict), "router_result missing"
+
+selected_skill = obj.get("selected_skill")
+task_id = obj.get("task_id")
+task_path = obj.get("task_path")
+
+assert selected_skill in allowed_skills, f"unexpected selected_skill: {selected_skill}"
+assert isinstance(task_id, str) and task_id.startswith("task-"), f"unexpected task_id: {task_id}"
+assert isinstance(task_path, str) and task_path.endswith(".json"), f"unexpected task_path: {task_path}"
+assert Path(task_path).exists(), f"task_path does not exist: {task_path}"
+
+assert f"skill: {selected_skill}" in reply_text, "reply_text should include selected skill"
+assert f"task: {task_id}" in reply_text, "reply_text should include task id"
+assert "bridge: " in reply_text, "reply_text should include bridge reply"
+
+assert router_result.get("selected_skill") == selected_skill, "selected_skill mismatch vs router_result"
+assert router_result.get("task_id") == task_id, "task_id mismatch vs router_result"
+
+print("PASS: Step72 router integration OK")

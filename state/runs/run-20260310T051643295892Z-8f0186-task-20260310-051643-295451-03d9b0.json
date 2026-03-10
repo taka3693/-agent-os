@@ -1,0 +1,46 @@
+{
+  "run_id": "run-20260310T051643295892Z-8f0186-task-20260310-051643-295451-03d9b0",
+  "timestamp": "2026-03-10T05:16:43+00:00",
+  "task_id": "task-20260310-051643-295451-03d9b0",
+  "step_count": 1,
+  "steps": [
+    {
+      "action": "write",
+      "path": "notes/read_preview_long.txt",
+      "content": "1234567890\nabcdefghij\nABCDEFGHIJ\npreview-line-4\npreview-line-5\npreview-line-6\npreview-line-7\npreview-line-8\npreview-line-9\npreview-line-10\npreview-line-11\npreview-line-12"
+    }
+  ],
+  "artifacts": [
+    "notes/read_preview_long.txt"
+  ],
+  "result": {
+    "ok": true,
+    "operation_count": 1,
+    "artifacts": [
+      "notes/read_preview_long.txt"
+    ],
+    "artifact_paths": [
+      "notes/read_preview_long.txt"
+    ],
+    "operations": [
+      {
+        "index": 1,
+        "action": "write",
+        "path": "notes/read_preview_long.txt",
+        "status": "ok",
+        "chars": 170
+      }
+    ],
+    "validation": {
+      "max_steps": 10,
+      "max_content_chars": 5000,
+      "allowed_actions": [
+        "append",
+        "read",
+        "write"
+      ]
+    }
+  },
+  "error": null,
+  "operation_count": 1
+}

@@ -1,0 +1,83 @@
+{
+  "task_id": "task-20260310-200624-468252",
+  "status": "completed",
+  "query": "振り返りしたい",
+  "selected_skill": "retrospective",
+  "selected_skills": [
+    "retrospective"
+  ],
+  "route_reason": "retrospective_keyword_match",
+  "router_result": {
+    "ok": true,
+    "selected_skill": "retrospective",
+    "selected_skills": [
+      "retrospective"
+    ],
+    "route_reason": "retrospective_keyword_match",
+    "router_policy": {
+      "category_order": [
+        "critique",
+        "decision",
+        "experiment",
+        "execution",
+        "research",
+        "retrospective"
+      ],
+      "fallback_order": [
+        "decision",
+        "critique",
+        "research",
+        "execution"
+      ],
+      "max_chain": 3
+    },
+    "pipeline": {
+      "primary_skill": "retrospective",
+      "skill_chain": [
+        "retrospective"
+      ],
+      "chain_length": 1,
+      "max_chain": 3
+    },
+    "plan": {
+      "goal": "振り返りしたい",
+      "steps": [
+        {
+          "skill": "retrospective",
+          "purpose": "結果の振り返りと改善抽出",
+          "done_when": "次回アクションが明確になる"
+        }
+      ],
+      "step_count": 1,
+      "mode": "autonomous_planning"
+    },
+    "planning_mode": "autonomous",
+    "task_id": "task-20260310-200624-468252",
+    "task_path": "/home/milky/agent-os/state/tasks/task-20260310-200624-468252.json"
+  },
+  "pipeline": {
+    "primary_skill": "retrospective",
+    "skill_chain": [
+      "retrospective"
+    ],
+    "chain_length": 1,
+    "max_chain": 3
+  },
+  "plan": {
+    "goal": "振り返りしたい",
+    "steps": [
+      {
+        "skill": "retrospective",
+        "purpose": "結果の振り返りと改善抽出",
+        "done_when": "次回アクションが明確になる"
+      }
+    ],
+    "step_count": 1,
+    "mode": "autonomous_planning"
+  },
+  "planning_mode": "autonomous",
+  "result": {
+    "summary": "",
+    "findings": []
+  }
+}

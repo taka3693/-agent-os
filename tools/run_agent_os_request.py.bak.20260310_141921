@@ -1,0 +1,238 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import json
+import sys
+import urllib.parse
+import urllib.request
+from pathlib import Path
+from typing import Any, Dict
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+from bridge.telegram_agent_os_entry import handle_message
+
+OPENCLAW_CONFIG = Path.home() / ".openclaw" / "openclaw.json"
+WORKSPACE_ROOT = PROJECT_ROOT / "workspace"
+READ_PREVIEW_LIMIT = 300
+
+
+def load_openclaw_config() -> Dict[str, Any]:
+    return json.loads(OPENCLAW_CONFIG.read_text(encoding="utf-8"))
+
+
+def extract_bot_token(cfg: Dict[str, Any]) -> str:
+    candidates = [
+        (((cfg.get("channels") or {}).get("telegram") or {}).get("botToken")),
+        (((cfg.get("channels") or {}).get("telegram") or {}).get("token")),
+    ]
+    for token in candidates:
+        if isinstance(token, str) and token.strip():
+            return token.strip()
+    raise RuntimeError("telegram bot token not found in ~/.openclaw/openclaw.json")
+
+
+def send_telegram_message(chat_id: str | int, text: str) -> Dict[str, Any]:
+    cfg = load_openclaw_config()
+    token = extract_bot_token(cfg)
+
+    url = f"https://api.telegram.org/bot{token}/sendMessage"
+    data = urllib.parse.urlencode({
+        "chat_id": str(chat_id),
+        "text": text,
+    }).encode("utf-8")
+
+    req = urllib.request.Request(url, data=data, method="POST")
+    with urllib.request.urlopen(req, timeout=30) as resp:
+        body = resp.read().decode("utf-8")
+    return json.loads(body)
+
+
+def read_json_if_exists(path_str: str | None) -> Dict[str, Any] | None:
+    if not path_str:
+        return None
+    p = Path(path_str)
+    if not p.exists():
+        return None
+    try:
+        return json.loads(p.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+
+
+def first_step_from_task(result: Dict[str, Any]) -> Dict[str, Any] | None:
+    task = read_json_if_exists(result.get("task_path"))
+    if not isinstance(task, dict):
+        return None
+    plan = ((task.get("input") or {}).get("plan") or {})
+    steps = plan.get("steps") if isinstance(plan, dict) else None
+    if isinstance(steps, list) and steps:
+        return steps[0] if isinstance(steps[0], dict) else None
+    return None
+
+
+def simplify_error(error: str | None) -> str:
+    s = (error or "").strip()
+    if not s:
+        return "unknown error"
+
+    prefixes = [
+        "PlanValidationError:",
+        "ValueError:",
+        "RuntimeError:",
+        "FileNotFoundError:",
+    ]
+    for prefix in prefixes:
+        if s.startswith(prefix):
+            s = s[len(prefix):].strip()
+            break
+    return s or "unknown error"
+
+
+def read_preview_from_workspace(rel_path: str | None, limit: int = READ_PREVIEW_LIMIT) -> str | None:
+    if not rel_path:
+        return None
+
+    p = (WORKSPACE_ROOT / rel_path).resolve()
+    root = WORKSPACE_ROOT.resolve()
+    try:
+        p.relative_to(root)
+    except ValueError:
+        return None
+
+    if not p.exists() or not p.is_file():
+        return None
+
+    try:
+        text = p.read_text(encoding="utf-8")
+    except Exception:
+        return None
+
+    if len(text) <= limit:
+        return text
+
+    return text[:limit] + "..."
+
+
+def format_reply(result: Dict[str, Any]) -> str:
+    mode = result.get("mode")
+
+    if mode == "help":
+        return result.get("reply_text") or "AgentOS help unavailable"
+
+    if mode == "pass":
+        return "AgentOS pass: not an execution command"
+
+    if not result.get("ok"):
+        return "\n".join([
+            "実行失敗",
+            f"原因: {simplify_error(result.get('error'))}",
+        ])
+
+    step = first_step_from_task(result) or {}
+    action = step.get("action")
+    path = step.get("path")
+    operation_count = int(result.get("operation_count", 0) or 0)
+    artifacts = result.get("artifacts") or []
+
+    if action == "read" and operation_count == 1:
+        char_count = None
+        task = read_json_if_exists(result.get("task_path"))
+        try:
+            ops = (((task or {}).get("result") or {}).get("operations") or [])
+            if ops and isinstance(ops[0], dict):
+                char_count = ops[0].get("chars")
+        except Exception:
+            char_count = None
+
+        lines = ["読み取り完了"]
+        if path:
+            lines.append(f"対象: {path}")
+        if isinstance(char_count, int):
+            lines.append(f"文字数: {char_count}")
+
+        preview = read_preview_from_workspace(path)
+        if preview is not None:
+            lines.append("プレビュー:")
+            lines.append(preview)
+
+        return "\n".join(lines)
+
+    lines = [
+        "実行完了",
+        f"操作数: {operation_count}",
+    ]
+
+    if artifacts:
+        lines.append("更新ファイル:")
+        lines.extend(f"- {p}" for p in artifacts[:10])
+
+    return "\n".join(lines)
+
+
+def read_input() -> Dict[str, Any]:
+    if len(sys.argv) >= 2 and sys.argv[1] != "--json-stdin":
+        return {
+            "text": sys.argv[1],
+            "chat_id": None,
+        }
+
+    raw = sys.stdin.read()
+    raw = raw or ""
+    raw = raw.strip()
+
+    if not raw:
+        return {"text": "", "chat_id": None}
+
+    try:
+        obj = json.loads(raw)
+    except Exception:
+        return {"text": raw, "chat_id": None}
+
+    if not isinstance(obj, dict):
+        return {"text": str(obj), "chat_id": None}
+
+    return {
+        "text": obj.get("text", "") or "",
+        "chat_id": obj.get("chat_id"),
+    }
+
+
+def main() -> int:
+    payload = read_input()
+    text = payload.get("text", "") or ""
+    chat_id = payload.get("chat_id")
+
+    try:
+        result = handle_message(text)
+        reply_text = format_reply(result)
+
+        telegram_send = None
+        if chat_id is not None and result.get("mode") in {"execution", "help"}:
+            try:
+                telegram_send = send_telegram_message(chat_id, reply_text)
+            except Exception as te:
+                result["telegram_send_error"] = f"{type(te).__name__}: {te}"
+
+        out = {
+            **result,
+            "reply_text": reply_text,
+            "telegram_send": telegram_send,
+        }
+        print(json.dumps(out, ensure_ascii=False, indent=2))
+        return 0 if result.get("ok") else 1
+
+    except Exception as e:
+        out = {
+            "ok": False,
+            "mode": "error",
+            "error": f"{type(e).__name__}: {e}",
+        }
+        print(json.dumps(out, ensure_ascii=False, indent=2))
+        return 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

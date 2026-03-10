@@ -1,0 +1,74 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import json
+import sys
+from pathlib import Path
+from typing import Any, Dict
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+from router.route_to_task import route_message_to_task
+from runner.run_execution_task import run_task as run_execution_task_run_task
+
+
+def is_execution_command(text: str) -> bool:
+    s = (text or "").strip()
+    if not s:
+        return False
+    prefixes = (
+        "aos decision: json",
+        "aos decision: write",
+        "aos decision: append",
+        "aos decision: read",
+    )
+    s_lower = s.lower()
+    return any(s_lower.startswith(p) for p in prefixes)
+
+
+def summarize_task(task: Dict[str, Any]) -> Dict[str, Any]:
+    result = {
+        "ok": task.get("status") == "completed",
+        "mode": "execution",
+        "task_id": task.get("id"),
+        "status": task.get("status"),
+        "error": task.get("error"),
+        "operation_count": task.get("operation_count", 0),
+        "artifacts": task.get("artifacts", []),
+        "run_log_path": task.get("run_log_path"),
+    }
+    return result
+
+
+def handle_message(message_text: str) -> Dict[str, Any]:
+    if not is_execution_command(message_text):
+        return {
+            "ok": False,
+            "mode": "pass",
+            "reason": "not_execution_command",
+        }
+
+    routed = route_message_to_task(message_text)
+    task_path = Path(routed["task_path"])
+    task = run_execution_task_run_task(task_path)
+
+    out = summarize_task(task)
+    out["task_path"] = str(task_path)
+    return out
+
+
+def main() -> int:
+    if len(sys.argv) < 2:
+        print("usage: telegram_agent_os_entry.py '<message text>'", file=sys.stderr)
+        return 2
+
+    message_text = sys.argv[1]
+    result = handle_message(message_text)
+    print(json.dumps(result, ensure_ascii=False, indent=2))
+    return 0 if result.get("ok") else 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

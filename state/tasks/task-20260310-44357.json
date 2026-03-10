@@ -1,0 +1,29 @@
+{
+  "task_id": "task-20260310-44357",
+  "created_at": "2026-03-10T08:51:41+00:00",
+  "updated_at": "2026-03-10T08:51:41+00:00",
+  "source": "telegram",
+  "input_text": "調査",
+  "selected_skill": "research",
+  "route_reason": "keyword match",
+  "status": "completed",
+  "chain_count": 0,
+  "allowed_skills": null,
+  "model": "zai/glm-5",
+  "run_input": {
+    "query": "調査"
+  },
+  "result": {
+    "summary": "ローカル整形による調査下準備を完了した。",
+    "findings": [
+      "依頼文を確認: 調査",
+      "キーワード分解を実施: 比較/整理/要約の3観点で扱う",
+      "次アクション案: 比較軸を3つに固定して情報を収集する"
+    ]
+  },
+  "error": null,
+  "query": "調査",
+  "text": "調査",
+  "started_at": "2026-03-10T17:51:41.319111+09:00",
+  "completed_at": "2026-03-10T17:51:41.319375+09:00"
+}

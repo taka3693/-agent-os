@@ -1,0 +1,28 @@
+{
+  "task_id": "task-20260310-001",
+  "created_at": "2026-03-10T03:31:57+00:00",
+  "updated_at": "2026-03-10T03:31:57+00:00",
+  "source": "telegram",
+  "input_text": "build local bridge-to-runner smoke test",
+  "selected_skill": "execution",
+  "route_reason": "fallback",
+  "status": "completed",
+  "chain_count": 0,
+  "allowed_skills": [
+    "execution"
+  ],
+  "model": "anthropic/claude-sonnet-4-6",
+  "run_input": {
+    "query": "build local bridge-to-runner smoke test"
+  },
+  "result": {
+    "summary": "execution dry-run completed for: build local bridge-to-runner smoke test",
+    "status": "ok",
+    "artifacts": [],
+    "next_inputs": [
+      "implemented_as_dry_run_only",
+      "real file/system actions are not enabled yet"
+    ]
+  },
+  "error": null
+}
