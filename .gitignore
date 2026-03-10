@@ -1,11 +1,14 @@
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
 
-state/tasks/*
-!state/tasks/.keep
+*.bak
+*.bak.*
+*.tmp
+*.log
 
-.openclaw
-.env
-.env.*
+state/tasks/*.json
+state/tasks/*.log
 
-node_modules/
+agent-os_snapshot_*.tar.gz
