@@ -20,6 +20,10 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+TOOLS_LIB_DIR = PROJECT_ROOT / "tools" / "lib"
+if str(TOOLS_LIB_DIR) not in sys.path:
+    sys.path.insert(0, str(TOOLS_LIB_DIR))
+
 from bridge.telegram_agent_os_entry import handle_message
 from tools.lib.router_cli import (
     parse_bridge_stdout_json as lib_parse_bridge_stdout_json,

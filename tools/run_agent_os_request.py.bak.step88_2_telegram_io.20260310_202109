@@ -27,15 +27,6 @@ from tools.lib.router_cli import (
     run_router_command_core as lib_run_router_command_core,
     run_router_command_with_optional_telegram as lib_run_router_command_with_optional_telegram,
 )
-from tools.lib.telegram_io import (
-    extract_bot_token as lib_extract_bot_token,
-    load_openclaw_config as lib_load_openclaw_config,
-    send_telegram_message as lib_send_telegram_message,
-)
-from tools.lib.json_batch_helpers import (
-    build_json_batch_reply_text as lib_build_json_batch_reply_text,
-    build_json_batch_telegram_text as lib_build_json_batch_telegram_text,
-)
 
 BASE_DIR = Path(__file__).resolve().parents[1]
 
@@ -55,15 +46,34 @@ TREE_MAX_DEPTH = 3
 
 
 def load_openclaw_config() -> Dict[str, Any]:
-    return lib_load_openclaw_config(OPENCLAW_CONFIG)
+    return json.loads(OPENCLAW_CONFIG.read_text(encoding="utf-8"))
 
 
 def extract_bot_token(cfg: Dict[str, Any]) -> str:
-    return lib_extract_bot_token(cfg)
+    candidates = [
+        (((cfg.get("channels") or {}).get("telegram") or {}).get("botToken")),
+        (((cfg.get("channels") or {}).get("telegram") or {}).get("token")),
+    ]
+    for token in candidates:
+        if isinstance(token, str) and token.strip():
+            return token.strip()
+    raise RuntimeError("telegram bot token not found in ~/.openclaw/openclaw.json")
 
 
 def send_telegram_message(chat_id: str | int, text: str) -> Dict[str, Any]:
-    return lib_send_telegram_message(OPENCLAW_CONFIG, chat_id, text)
+    cfg = load_openclaw_config()
+    token = extract_bot_token(cfg)
+
+    url = f"https://api.telegram.org/bot{token}/sendMessage"
+    data = urllib.parse.urlencode({
+        "chat_id": str(chat_id),
+        "text": text,
+    }).encode("utf-8")
+
+    req = urllib.request.Request(url, data=data, method="POST")
+    with urllib.request.urlopen(req, timeout=30) as resp:
+        body = resp.read().decode("utf-8")
+    return json.loads(body)
 
 
 def resolve_workspace_path(rel_path: str | None) -> Path | None:

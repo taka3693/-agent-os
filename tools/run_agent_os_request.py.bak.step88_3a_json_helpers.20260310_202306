@@ -32,10 +32,6 @@ from tools.lib.telegram_io import (
     load_openclaw_config as lib_load_openclaw_config,
     send_telegram_message as lib_send_telegram_message,
 )
-from tools.lib.json_batch_helpers import (
-    build_json_batch_reply_text as lib_build_json_batch_reply_text,
-    build_json_batch_telegram_text as lib_build_json_batch_telegram_text,
-)
 
 BASE_DIR = Path(__file__).resolve().parents[1]
 
