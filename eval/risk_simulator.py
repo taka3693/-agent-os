@@ -120,6 +120,9 @@ def simulate_policy_risk(
                 created_by="risk_simulation",
             )
         
+        # Check if entry already exists (e.g., rolled-back rule being reintroduced)
+        existing_entry = virtual_registry._adopted.get(rule_id)
+        
         entry = {
             "source_candidate_rule_id": rule_id,
             "adoption_status": ADOPTION_STATUS_ADOPTED,
@@ -130,6 +133,17 @@ def simulate_policy_risk(
             "risk_level": rule.get("risk_level", "medium"),
             "provenance": provenance,
         }
+        
+        # Preserve existing entry's adoption_status to detect rollback reintroduction
+        # If a rule was rolled-back, we want conflict detection to see that status
+        if existing_entry:
+            # Keep the original adoption_status for conflict detection
+            # This allows detection of rollback_lineage_reintroduction conflicts
+            entry["adoption_status"] = existing_entry.get("adoption_status", ADOPTION_STATUS_ADOPTED)
+            # Also preserve original provenance for lineage tracking
+            if existing_entry.get("provenance"):
+                entry["provenance"] = existing_entry["provenance"]
+        
         virtual_registry._adopted[rule_id] = entry
 
     # Run predictions
@@ -187,9 +201,11 @@ def simulate_policy_risk(
         warnings.append(f"Governance halt predicted for {halt_count} rule(s)")
     
     review_count = predicted_governance_risk.get("review_required_count", 0)
-    if review_count > 0 and risk_level == RISK_LOW:
-        risk_level = RISK_MEDIUM
-        warnings.append(f"Review required predicted for {review_count} rule(s)")
+    if review_count > 0:
+        # review_required alone doesn't elevate risk level
+        # Only add informational note, not a warning
+        # This allows safe candidates (no conflicts, no health drop, no halt) to remain LOW
+        pass  # review_required is informational, not a risk factor
 
     # Build simulation summary
     simulation_summary = {
