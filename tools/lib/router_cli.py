@@ -242,3 +242,206 @@ def router_cli_short_circuit(
     rc = 0 if out.get("ok") else 1
     print(json.dumps(out, ensure_ascii=False, indent=2))
     return rc
+
+
+# =============================================================================
+# Step91: Pipeline Executor
+# =============================================================================
+
+import tempfile
+import time
+from datetime import timezone
+
+
+def _now_iso() -> str:
+    """Return current timestamp in ISO 8601 format."""
+    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def _atomic_write_json(path: Path, data: Dict[str, Any]) -> None:
+    """Atomically write JSON to avoid partial writes."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.NamedTemporaryFile(
+        mode="w", encoding="utf-8", dir=path.parent, suffix=".tmp", delete=False
+    ) as tmp:
+        tmp.write(json.dumps(data, ensure_ascii=False, indent=2))
+        tmp.write("\n")
+        tmp_path = Path(tmp.name)
+    tmp_path.replace(path)
+
+
+def _load_task(path: Path) -> Dict[str, Any]:
+    """Load task JSON with error handling."""
+    if not path.exists():
+        return {}
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+
+
+def _init_task_state(
+    task_id: str,
+    query: str,
+    selected_skill: str,
+    skill_chain: List[str],
+    source: str = "cli",
+) -> Dict[str, Any]:
+    """Initialize a new task state with Step91 schema."""
+    now = _now_iso()
+    return {
+        "task_id": task_id,
+        "status": "pending",
+        "created_at": now,
+        "started_at": None,
+        "finished_at": None,
+        "request": {
+            "source": source,
+            "text": query,
+        },
+        "plan": {
+            "selected_skill": selected_skill,
+            "skill_chain": skill_chain,
+        },
+        "execution": {
+            "current_step_index": 0,
+            "completed_steps": 0,
+            "resume_count": 0,
+        },
+        "step_results": [],
+    }
+
+
+def _execute_single_step(
+    task: Dict[str, Any],
+    step_index: int,
+    skill: str,
+    step_fn,  # Callable[[Dict], Dict] - step implementation
+    continue_on_error: bool = False,
+) -> Dict[str, Any]:
+    """Execute a single step and return updated task state.
+
+    Args:
+        task: Current task state
+        step_index: 0-based step index
+        skill: Skill name for this step
+        step_fn: Function to execute (receives task, returns result dict)
+        continue_on_error: Whether to continue on error
+
+    Returns:
+        Updated task state with step_result appended
+    """
+    started_at = _now_iso()
+    start_time = time.time()
+
+    step_result = {
+        "step_index": step_index,
+        "skill": skill,
+        "status": "ok",
+        "continue_on_error": continue_on_error,
+        "started_at": started_at,
+        "finished_at": None,
+        "duration_ms": None,
+        "output": {},
+        "error_type": None,
+        "error_message": None,
+    }
+
+    try:
+        output = step_fn(task) if step_fn else {}
+        if not isinstance(output, dict):
+            output = {"raw": output}
+        step_result["output"] = output
+        step_result["status"] = "ok"
+    except Exception as e:
+        step_result["status"] = "error"
+        step_result["error_type"] = type(e).__name__
+        step_result["error_message"] = str(e)
+
+    finished_at = _now_iso()
+    step_result["finished_at"] = finished_at
+    step_result["duration_ms"] = int((time.time() - start_time) * 1000)
+
+    # Update task state
+    task = dict(task)
+    task["step_results"] = list(task.get("step_results", []))
+    task["step_results"].append(step_result)
+
+    execution = dict(task.get("execution", {}))
+    execution["current_step_index"] = step_index + 1
+    execution["completed_steps"] = len([r for r in task["step_results"] if r.get("status") == "ok"])
+    task["execution"] = execution
+
+    return task
+
+
+def run_pipeline_executor(
+    task_id: str,
+    query: str,
+    skill_chain: List[str],
+    step_fns: List,  # List of callables, one per skill
+    tasks_dir: Path,
+    source: str = "cli",
+    continue_on_error_chain: List[bool] | None = None,
+) -> Dict[str, Any]:
+    """Execute a pipeline of skills with proper state management.
+
+    Args:
+        task_id: Unique task identifier
+        query: User query text
+        skill_chain: List of skill names to execute
+        step_fns: List of step functions (one per skill)
+        tasks_dir: Directory to store task state
+        source: Request source (cli, telegram, etc.)
+        continue_on_error_chain: Per-step continue_on_error flags
+
+    Returns:
+        Final task state
+    """
+    if not skill_chain:
+        skill_chain = ["research"]
+    if not step_fns:
+        step_fns = [None] * len(skill_chain)
+    if continue_on_error_chain is None:
+        continue_on_error_chain = [False] * len(skill_chain)
+
+    # Initialize task
+    selected_skill = skill_chain[0] if skill_chain else "research"
+    task = _init_task_state(task_id, query, selected_skill, skill_chain, source)
+
+    task_path = tasks_dir / f"{task_id}.json"
+
+    # Mark as running
+    task["status"] = "running"
+    task["started_at"] = _now_iso()
+    _atomic_write_json(task_path, task)
+
+    # Execute steps
+    stopped_early = False
+    for i, (skill, step_fn, continue_on_error) in enumerate(
+        zip(skill_chain, step_fns, continue_on_error_chain)
+    ):
+        task = _execute_single_step(task, i, skill, step_fn, continue_on_error)
+        _atomic_write_json(task_path, task)
+
+        # Check for errors
+        last_result = task["step_results"][-1] if task["step_results"] else None
+        if last_result and last_result.get("status") == "error":
+            if not continue_on_error:
+                stopped_early = True
+                break
+
+    # Finalize task
+    task["finished_at"] = _now_iso()
+
+    if stopped_early:
+        task["status"] = "failed"
+    elif any(r.get("status") == "error" for r in task["step_results"]):
+        # Has errors but continued - mark as "partial"
+        task["status"] = "partial"
+    else:
+        task["status"] = "completed"
+
+    _atomic_write_json(task_path, task)
+
+    return task

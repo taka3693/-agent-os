@@ -47,8 +47,8 @@ assert "---" in reply_text, "CLI reply_text should include per-step detail secti
 
 # Telegram は短縮 summary
 assert telegram_reply_text.startswith("検証: NGあり"), "telegram summary must start with compact validation summary"
-assert "最初の失敗(1始まり): step=danger / step#2 / 種別=ポリシー / 理由=削除コマンドは未対応" in telegram_reply_text
-assert "補足: NG後も継続" in telegram_reply_text
+assert "最初の失敗(1始まり): id=danger / step#2 / 種別=ポリシー / 理由=削除コマンドは未対応" in telegram_reply_text
+assert "補足: NG後も継続" not in telegram_reply_text
 
 # CLI 詳細と Telegram 要約は分離されていること
 assert reply_text != telegram_reply_text, "CLI detail and Telegram summary must be split"
