@@ -568,7 +568,115 @@ When uncertain, the system defaults to safer decisions:
 
 ---
 
-## 12. Implementation Summary
+## 12. Policy CI Pipeline (Step 124)
+
+### Purpose
+
+The CI Pipeline provides automated policy evaluation for integration workflows.
+
+### Pipeline Flow
+
+```
+candidate rules
+       ↓
+existing evaluation pipeline
+       ↓
+governance judgment
+       ↓
+CI Gate decision
+       ↓
+result report
+```
+
+### CI Gate Status
+
+| Status | Condition |
+|--------|-----------|
+| `pass` | All checks pass, safe to merge |
+| `warning` | Non-blocking issues, review recommended |
+| `fail` | Blocking issues found, merge blocked |
+
+### Fail Conditions
+
+| Condition | Description |
+|-----------|-------------|
+| HALT decision | Auto-evolution returned HALT |
+| Missing provenance | Rule lacks required metadata |
+| High severity conflict | Dangerous rule interaction detected |
+| Harmful bundle | Bundle evaluation found harmful interaction |
+| Guardrail violation | Promotion guardrail triggered |
+
+### Warning Conditions
+
+| Condition | Description |
+|-----------|-------------|
+| REVIEW_REQUIRED | Rule needs human review |
+| Health score drop | Minor health degradation |
+| Medium conflict | Non-critical conflict detected |
+
+### Pass Conditions
+
+- Complete provenance
+- No high-severity conflicts
+- No harmful bundle interactions
+- No governance blocks
+- Health score acceptable
+
+### Usage
+
+```python
+from eval.ci_pipeline import run_policy_ci_pipeline, summarize_policy_ci_result
+
+# Evaluate candidates
+result = run_policy_ci_pipeline(
+    candidate_rules=[
+        {"rule_id": "rule-001", "provenance": {...}, ...}
+    ],
+    existing_registry=registry,
+)
+
+# Check status
+if result["overall_status"] == "pass":
+    print("Safe to merge")
+elif result["overall_status"] == "fail":
+    for reason in result["blocking_reasons"]:
+        print(f"Blocked: {reason}")
+
+# Get human-readable summary
+summary = summarize_policy_ci_result(result)
+print(summary)
+```
+
+### CI Result Structure
+
+```json
+{
+  "overall_status": "pass | warning | fail",
+  "decision_summary": {...},
+  "health_summary": {...},
+  "review_queue_summary": {...},
+  "governance_summary": {...},
+  "candidate_results": [...],
+  "blocking_reasons": [...],
+  "warnings": [...],
+  "report": {...}
+}
+```
+
+### Helper Functions
+
+| Function | Purpose |
+|----------|---------|
+| `get_ci_gate_status()` | Get pass/warning/fail status |
+| `is_ci_gate_blocked()` | Check if gate is blocked |
+| `get_blocking_reasons()` | Get list of blocking reasons |
+| `get_warnings()` | Get list of warnings |
+| `export_ci_result_json()` | Export result as JSON |
+| `evaluate_single_candidate()` | Evaluate one candidate |
+
+---
+
+## 13. Implementation Summary
 
 | Step | Feature | Tests |
 |------|---------|-------|
@@ -582,17 +690,18 @@ When uncertain, the system defaults to safer decisions:
 | 121 | E2E Integration Tests | 5+ |
 | 122 | Explainable Reports | 23+ |
 | 123 | Operational Governance | 27+ |
+| 124 | Policy CI Pipeline | 27+ |
 
-**Total: 808 tests, all passing**
+**Total: 835 tests, all passing**
 
 ---
 
-## 13. Current System State
+## 14. Current System State
 
 ### Test Status
 
 ```
-Ran 808 tests
+Ran 835 tests
 OK
 ```
 
@@ -600,8 +709,9 @@ OK
 
 | File | Purpose |
 |------|---------|
-| `eval/candidate_rules.py` | Core implementation |
-| `tests/test_step114_*.py` - `tests/test_step123_*.py` | Test suites |
+| `eval/candidate_rules.py` | Core implementation (Steps 114-123) |
+| `eval/ci_pipeline.py` | CI Pipeline (Step 124) |
+| `tests/test_step114_*.py` - `tests/test_step124_*.py` | Test suites |
 | `docs/policy_evolution_system.md` | This document |
 
 ### Key APIs
@@ -624,6 +734,11 @@ build_explainable_decision_report(registry)
 build_operational_governance_policy()
 compute_operational_metrics_report(registry)
 
+# CI Pipeline (Step 124)
+run_policy_ci_pipeline(candidates, existing_registry)
+summarize_policy_ci_result(ci_result)
+get_ci_gate_status(ci_result)
+
 # Export
 registry.export(include_governance=True, ...)
 ```
@@ -632,12 +747,12 @@ registry.export(include_governance=True, ...)
 
 ## References
 
-- Tests: `tests/test_step114_provenance.py` through `tests/test_step123_operational_governance.py`
-- Implementation: `eval/candidate_rules.py`
+- Tests: `tests/test_step114_provenance.py` through `tests/test_step124_policy_ci_pipeline.py`
+- Implementation: `eval/candidate_rules.py`, `eval/ci_pipeline.py`
 - E2E Tests: `tests/test_step121_policy_evolution_e2e.py`
 
 ---
 
 **Last Updated**: 2026-03-11  
-**Test Status**: 808 PASS / 0 FAIL  
+**Test Status**: 835 PASS / 0 FAIL  
 **System Status**: Production Ready
