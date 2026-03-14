@@ -41,6 +41,8 @@ from tools.lib.json_batch_helpers import (
     build_json_batch_reply_text as lib_build_json_batch_reply_text,
     build_json_batch_telegram_text as lib_build_json_batch_telegram_text,
 )
+from tools.lib.reply_formatter import format_execution_report
+from execution.guard import enforce_guard
 
 BASE_DIR = Path(__file__).resolve().parents[1]
 
@@ -57,6 +59,140 @@ READ_PREVIEW_LIMIT = 300
 LS_LIMIT = 50
 TREE_LIMIT = 80
 TREE_MAX_DEPTH = 3
+
+
+def _extract_pytest_failure_summary(stdout: str, stderr: str) -> str | None:
+    """Extract meaningful failure summary from pytest output.
+    
+    Prefers lines containing actual failure reasons, not progress markers.
+    
+    Args:
+        stdout: pytest stdout
+        stderr: pytest stderr
+        
+    Returns:
+        Compact summary string or None if no meaningful lines found
+    """
+    # Combine stdout and stderr, preferring stdout for failure info
+    output = stdout or ""
+    
+    # Keywords that indicate actual failure reasons
+    failure_keywords = [
+        "FAILED",
+        "ERROR",
+        "AssertionError",
+        "RuntimeError",
+        "Exception:",
+        "short test summary",
+    ]
+    
+    lines = output.strip().split("\n")
+    
+    # Collect meaningful failure lines
+    meaningful_lines = []
+    for line in lines:
+        stripped = line.strip()
+        if not stripped:
+            continue
+        # Skip progress lines like "[  6%]"
+        if stripped.startswith("=") or (stripped.startswith("[") and "%]" in stripped):
+            continue
+        # Skip dots and 'F'/'E' progress indicators
+        if stripped in ("...", "F", "E", "FE", "EF", "."):
+            continue
+        # Check for failure keywords
+        for keyword in failure_keywords:
+            if keyword in stripped:
+                if stripped not in meaningful_lines:
+                    meaningful_lines.append(stripped)
+                break
+    
+    # If no keyword matches, fall back to last non-empty lines
+    if not meaningful_lines:
+        # Get last few lines that aren't just separators
+        for line in reversed(lines):
+            stripped = line.strip()
+            if stripped and not stripped.startswith("=") and not (stripped.startswith("[") and "%]" in stripped):
+                if stripped not in meaningful_lines:
+                    meaningful_lines.insert(0, stripped)
+                if len(meaningful_lines) >= 3:
+                    break
+    
+    # Build compact summary (max 3 lines, 200 chars total)
+    if meaningful_lines:
+        summary_parts = meaningful_lines[:3]
+        summary = " | ".join(summary_parts)
+        if len(summary) > 200:
+            summary = summary[:200] + "..."
+        return summary
+    
+    return None
+
+
+def _find_pytest_targets(changed_files: list[Path], project_root: Path) -> list[Path]:
+    """Find likely pytest target files for changed Python files.
+    
+    Conservative approach: only return test files that definitely exist.
+    
+    Args:
+        changed_files: List of changed Python file paths
+        project_root: Project root directory
+        
+    Returns:
+        List of existing test file paths (may be empty)
+    """
+    tests_dir = project_root / "tests"
+    if not tests_dir.exists():
+        return []
+    
+    targets = []
+    
+    for changed in changed_files:
+        # Get the base name without extension
+        stem = changed.stem
+        
+        # Try common test file naming patterns
+        candidate_names = [
+            f"test_{stem}.py",
+            f"{stem}_test.py",
+        ]
+        
+        for name in candidate_names:
+            candidate = tests_dir / name
+            if candidate.exists() and candidate not in targets:
+                targets.append(candidate)
+    
+    return targets
+
+
+def _format_guard_failure_summary(result: Dict[str, Any]) -> str:
+    """Format a short, beginner-friendly guard failure summary.
+    
+    Args:
+        result: Execution result dict with guard_failed, guard_failures, guard_failure_details
+        
+    Returns:
+        Formatted summary string (empty if no guard failure)
+    """
+    if not result.get("guard_failed"):
+        return ""
+    
+    lines = ["", "⚠️ **Guard blocked this change**"]
+    
+    # Prefer structured details
+    details = result.get("guard_failure_details", [])
+    if details:
+        for detail in details[:3]:  # Max 3 items
+            code = detail.get("code", "UNKNOWN")
+            message = detail.get("message", "")
+            lines.append(f"- `{code}`: {message}")
+    else:
+        # Fallback to string failures
+        failures = result.get("guard_failures", [])
+        for failure in failures[:3]:  # Max 3 items
+            lines.append(f"- {failure}")
+    
+    return "\n".join(lines)
 
 
 def load_openclaw_config() -> Dict[str, Any]:
@@ -578,7 +714,142 @@ def main() -> int:
             result["first_failed_mode"] = "ポリシー"
             result["first_failed_reason"] = "削除コマンドは未対応"
 
-        reply_text = format_reply(result)
+        # Extract actual changed files from artifacts
+        artifacts = result.get("artifacts") or []
+        changed_py_files = []
+        for a in artifacts:
+            p = Path(a) if not isinstance(a, Path) else a
+            if p.suffix == ".py" and p.exists():
+                changed_py_files.append(p)
+
+        # Get actual git diff for changed files
+        diff_output = ""
+        if changed_py_files:
+            try:
+                import subprocess
+                diff_result = subprocess.run(
+                    ["git", "diff", "--"] + [str(f) for f in changed_py_files],
+                    capture_output=True,
+                    text=True,
+                    cwd=WORKSPACE_ROOT,
+                    timeout=10,
+                )
+                diff_output = diff_result.stdout
+            except Exception:
+                diff_output = ""
+
+        # Determine if this is a small change task
+        # Small change = few operations AND few changed files
+        operation_count = int(result.get("operation_count", 0) or 0)
+        artifact_count = len(artifacts)
+        is_small_change = (
+            operation_count <= 3 and  # Few operations
+            artifact_count <= 2 and   # Few files changed
+            len(changed_py_files) <= 2  # Few Python files
+        )
+
+        # Run pytest if Python files were changed
+        # Flow: targeted tests (if found) -> full suite (always required)
+        pytest_info = {
+            "required": bool(changed_py_files),
+            "ran": False,
+            "passed": None,
+            "exit_code": None,
+            "summary": None,
+            "targets": [],
+            "targeted_ran": False,
+            "targeted_passed": None,
+            "targeted_exit_code": None,
+            "full_suite_ran": False,
+            "full_suite_passed": None,
+            "full_suite_exit_code": None,
+        }
+        
+        if changed_py_files:
+            try:
+                # Try to find targeted test files first (early check)
+                pytest_targets = _find_pytest_targets(changed_py_files, PROJECT_ROOT)
+                pytest_info["targets"] = [str(t) for t in pytest_targets]
+                
+                if pytest_targets:
+                    # Run targeted tests first (early optimization)
+                    targeted_cmd = [sys.executable, "-m", "pytest"] + [str(t) for t in pytest_targets] + ["-x", "-q", "--tb=no"]
+                    targeted_result = subprocess.run(
+                        targeted_cmd,
+                        capture_output=True,
+                        text=True,
+                        cwd=PROJECT_ROOT,
+                        timeout=60,
+                    )
+                    pytest_info["targeted_ran"] = True
+                    pytest_info["targeted_passed"] = targeted_result.returncode == 0
+                    pytest_info["targeted_exit_code"] = targeted_result.returncode
+                    
+                    # If targeted tests fail, block immediately (no need to run full suite)
+                    if targeted_result.returncode != 0:
+                        pytest_info["ran"] = True
+                        pytest_info["passed"] = False
+                        pytest_info["exit_code"] = targeted_result.returncode
+                        pytest_info["summary"] = _extract_pytest_failure_summary(
+                            targeted_result.stdout, targeted_result.stderr
+                        )
+                    else:
+                        # Targeted passed, run full suite for final verification
+                        full_cmd = [sys.executable, "-m", "pytest", "tests/", "-x", "-q", "--tb=no"]
+                        full_result = subprocess.run(
+                            full_cmd,
+                            capture_output=True,
+                            text=True,
+                            cwd=PROJECT_ROOT,
+                            timeout=60,
+                        )
+                        pytest_info["full_suite_ran"] = True
+                        pytest_info["full_suite_passed"] = full_result.returncode == 0
+                        pytest_info["full_suite_exit_code"] = full_result.returncode
+                        pytest_info["ran"] = True
+                        pytest_info["passed"] = full_result.returncode == 0
+                        pytest_info["exit_code"] = full_result.returncode
+                        if full_result.returncode != 0:
+                            pytest_info["summary"] = _extract_pytest_failure_summary(
+                                full_result.stdout, full_result.stderr
+                            )
+                else:
+                    # No targeted tests found, run full suite directly
+                    full_cmd = [sys.executable, "-m", "pytest", "tests/", "-x", "-q", "--tb=no"]
+                    full_result = subprocess.run(
+                        full_cmd,
+                        capture_output=True,
+                        text=True,
+                        cwd=PROJECT_ROOT,
+                        timeout=60,
+                    )
+                    pytest_info["full_suite_ran"] = True
+                    pytest_info["full_suite_passed"] = full_result.returncode == 0
+                    pytest_info["full_suite_exit_code"] = full_result.returncode
+                    pytest_info["ran"] = True
+                    pytest_info["passed"] = full_result.returncode == 0
+                    pytest_info["exit_code"] = full_result.returncode
+                    if full_result.returncode != 0:
+                        pytest_info["summary"] = _extract_pytest_failure_summary(
+                            full_result.stdout, full_result.stderr
+                        )
+            except Exception as e:
+                pytest_info["ran"] = False
+                pytest_info["passed"] = None
+                pytest_info["exit_code"] = None
+                pytest_info["summary"] = f"pytest execution error: {e}"
+
+        # Enforce guard checks before reporting success
+        result = enforce_guard(
+            result,
+            output=reply_text if "reply_text" in dir() else "",
+            changed_files=changed_py_files,
+            diff_output=diff_output,
+            is_small_change=is_small_change,
+            pytest_info=pytest_info,
+        )
+
+        reply_text = format_execution_report(result, WORKSPACE_ROOT)
         reply_text = reply_text.split("\n\n[step ", 1)[0]
         for _i, _r in enumerate(result.get("results") or [], start=1):
             _step_id = _r.get("step_id") or _r.get("step_label") or str(_i)
@@ -595,7 +866,18 @@ def main() -> int:
                 f"ok: {_ok}\n"
                 f"continue_on_error: {_cont}\n"
             )
-        telegram_reply_text = format_telegram_batch_summary(result) or reply_text
+        
+        # Add guard failure summary if guard blocked
+        guard_summary = _format_guard_failure_summary(result)
+        if guard_summary:
+            reply_text += guard_summary
+        
+        telegram_batch_text = format_telegram_batch_summary(result)
+        telegram_reply_text = telegram_batch_text or reply_text
+        
+        # Add guard failure summary to Telegram reply if guard blocked and using custom format
+        if guard_summary and telegram_batch_text:
+            telegram_reply_text += guard_summary
 
         telegram_send = None
         if chat_id is not None and result.get("mode") in {"execution", "help", "browse", "meta", "fs", "policy", "pass", "router"}:
