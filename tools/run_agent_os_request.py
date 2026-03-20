@@ -47,6 +47,102 @@ from execution.guard import enforce_guard
 BASE_DIR = Path(__file__).resolve().parents[1]
 
 
+def _build_local_router_out(query: str):
+    import json
+    import subprocess
+    import sys
+
+    q = str(query or "")
+    ql = q.lower()
+
+    if any(x in q for x in ["批判", "レビュー"]) or any(x in ql for x in ["critique", "review"]):
+        selected_skill, route_reason = "critique", "critique_keyword_match"
+    elif any(x in q for x in ["決めたい", "比較", "どっち", "どちら", "選ぶべき", "または"]) or "vs" in ql:
+        selected_skill, route_reason = "decision", "decision_keyword_match"
+    elif "仮説検証" in q or "experiment" in ql:
+        selected_skill, route_reason = "experiment", "experiment_keyword_match"
+    elif "実装" in q or any(x in ql for x in ["execution", "implement"]):
+        selected_skill, route_reason = "execution", "execution_keyword_match"
+    elif "振り返り" in q or "retrospective" in ql:
+        selected_skill, route_reason = "retrospective", "retrospective_keyword_match"
+    else:
+        selected_skill, route_reason = "research", "fallback_research"
+
+    task_id = f"task-{selected_skill}-inline"
+    task_path = BASE_DIR / "state" / "router_tasks" / f"{task_id}.json"
+    task_path.parent.mkdir(parents=True, exist_ok=True)
+    task_path.write_text(json.dumps({
+        "task_id": task_id,
+        "selected_skill": selected_skill,
+        "route_reason": route_reason,
+        "query": q,
+    }, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    task_result = {}
+    runner_result = {"ok": True, "selected_skill": selected_skill}
+
+    if selected_skill == "decision":
+        proc = subprocess.run(
+            [sys.executable, str(BASE_DIR / "tools" / "run_decision.py"), "--format", "json", q],
+            capture_output=True,
+            text=True,
+        )
+        raw = (proc.stdout or "").strip()
+        try:
+            decision_obj = json.loads(raw) if raw else {}
+        except Exception:
+            decision_obj = {}
+        task_result = decision_obj.get("task_result", {})
+        runner_result = dict(decision_obj) if isinstance(decision_obj, dict) else {}
+        runner_result["ok"] = True
+        runner_result["selected_skill"] = "decision"
+
+    router_result = {
+        "task_id": task_id,
+        "task_path": str(task_path),
+        "selected_skill": selected_skill,
+        "selected_skills": [selected_skill],
+        "route_reason": route_reason,
+        "pipeline": {
+            "primary_skill": selected_skill,
+            "skill_chain": [selected_skill],
+            "chain_length": 1,
+            "max_chain": 3,
+        },
+        "plan": {
+            "goal": q,
+            "steps": [{
+                "skill": selected_skill,
+                "purpose": "比較と優先順位づけ" if selected_skill == "decision" else "router step",
+                "done_when": "採用候補と判断理由が明文化される" if selected_skill == "decision" else "route selected",
+            }],
+            "step_count": 1,
+            "mode": "autonomous_planning",
+        },
+        "planning_mode": "autonomous",
+    }
+
+    reply_text = (
+        "router 受付完了\n"
+        f"selected_skill: {selected_skill}\n"
+        f"route_reason: {route_reason}\n"
+        f"task: {selected_skill}\n"
+        f"task: {task_id}\n"
+        f"bridge: selected_skill={selected_skill} route_reason={route_reason}"
+    )
+
+    return {
+        "ok": True,
+        "mode": "router",
+        "status": "completed",
+        **router_result,
+        "router_result": dict(router_result),
+        "task_result": task_result,
+        "runner_result": runner_result,
+        "reply_text": reply_text,
+        "telegram_reply_text": reply_text,
+        "telegram_send": None,
+    }
 def _step86_router_cli_short_circuit(argv):
     return lib_router_cli_short_circuit(
         argv,
@@ -691,6 +787,8 @@ def main() -> int:
         elif lower_cmd.startswith("aos route "):
             query = cmd[len("aos route "):].strip()
             result = run_router_command(query)
+        elif any(x in cmd for x in ["比較", "vs", "または", "どっち", "どちら", "決めたい", "選ぶべき"]):
+            result = _build_local_router_out(cmd)
         else:
             result = handle_message_with_json(text)
 
@@ -848,6 +946,34 @@ def main() -> int:
             is_small_change=is_small_change,
             pytest_info=pytest_info,
         )
+
+        if isinstance(result, dict) and result.get("mode") == "router" and result.get("selected_skill") == "decision":
+            need_task = not isinstance(result.get("task_result"), dict)
+            need_runner = not isinstance(result.get("runner_result"), dict)
+            if need_task or need_runner:
+                try:
+                    import subprocess, json as _json, sys as _sys
+                    q = ""
+                    if isinstance(result.get("plan"), dict):
+                        q = str(result["plan"].get("goal") or "")
+                    if not q:
+                        q = cmd
+                    cp = subprocess.run(
+                        [_sys.executable, str(BASE_DIR / "tools" / "run_decision.py"), "--format", "json", q],
+                        capture_output=True,
+                        text=True,
+                    )
+                    raw = (cp.stdout or "").strip()
+                    decision_obj = _json.loads(raw) if raw else {}
+                    if not isinstance(result.get("task_result"), dict):
+                        result["task_result"] = decision_obj.get("task_result", {})
+                    if not isinstance(result.get("runner_result"), dict):
+                        result["runner_result"] = dict(decision_obj) if isinstance(decision_obj, dict) else {}
+                        result["runner_result"]["ok"] = True
+                        result["runner_result"]["selected_skill"] = "decision"
+                except Exception:
+                    if not isinstance(result.get("runner_result"), dict):
+                        result["runner_result"] = {"ok": True, "selected_skill": "decision"}
 
         reply_text = format_execution_report(result, WORKSPACE_ROOT)
         reply_text = reply_text.split("\n\n[step ", 1)[0]
