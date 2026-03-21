@@ -32,3 +32,15 @@ cd -agent-os
 
 現在は README などの基盤整備フェーズです。
 今後、`generate_decision.py` パイプライン、CLI、FastAPI `/decision` などを順次追加します。
+
+## Current Project Structure
+
+現時点の最小構成は以下です。
+
+```text
+.
+├── README.md
+└── .git/
+```
+
+今後、Decision System の実装に合わせてファイルやディレクトリを追加します。
