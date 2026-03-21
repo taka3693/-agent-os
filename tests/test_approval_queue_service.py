@@ -1,0 +1,52 @@
+from __future__ import annotations
+
+import tempfile
+import unittest
+from pathlib import Path
+
+from ops.approval_queue_service import get_pending_approvals_view
+from ops.approval_queue_store import append_approval_queue_entry
+
+
+class ApprovalQueueServiceTests(unittest.TestCase):
+    def test_get_pending_approvals_view_empty(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            out = get_pending_approvals_view(Path(td))
+            self.assertEqual(out["count"], 0)
+            self.assertEqual(out["rows"], [])
+            self.assertEqual(out["text"], "承認待ち: 0件")
+
+    def test_get_pending_approvals_view_with_limit(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            state_root = Path(td)
+
+            append_approval_queue_entry(
+                state_root,
+                timestamp="2026-03-12T12:00:00Z",
+                fingerprint="session.archive:old-1.jsonl",
+                action="session.archive",
+                args={"target_basename": "old-1.jsonl"},
+                policy="approval_required",
+                reason="archive old session",
+                source="evaluation",
+            )
+            append_approval_queue_entry(
+                state_root,
+                timestamp="2026-03-12T12:05:00Z",
+                fingerprint="session.archive:old-2.jsonl",
+                action="session.archive",
+                args={"target_basename": "old-2.jsonl"},
+                policy="approval_required",
+                reason="archive old session",
+                source="session_hygiene",
+            )
+
+            out = get_pending_approvals_view(state_root, limit=1)
+            self.assertEqual(out["count"], 1)
+            self.assertEqual(len(out["rows"]), 1)
+            self.assertEqual(out["rows"][0]["fingerprint"], "session.archive:old-2.jsonl")
+            self.assertIn("承認待ち: 1件", out["text"])
+
+
+if __name__ == "__main__":
+    unittest.main()
