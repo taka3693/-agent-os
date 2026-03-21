@@ -37,3 +37,17 @@ def build_cli_reply(header, results):
 
 def build_telegram_reply(text):
     return text
+
+def format_execution_report(result, workspace_root=None):
+    if isinstance(result, dict):
+        if isinstance(result.get("reply_text"), str) and result.get("reply_text").strip():
+            return result["reply_text"]
+        if isinstance(result.get("task_result"), dict):
+            import json
+            return json.dumps(result, ensure_ascii=False, indent=2)
+        if isinstance(result.get("results"), list):
+            header = result.get("summary") or result.get("message") or ""
+            return build_cli_reply(header, result.get("results") or [])
+        import json
+        return json.dumps(result, ensure_ascii=False, indent=2)
+    return str(result)

@@ -1,4 +1,10 @@
 import sys, json, re, subprocess
+from pathlib import Path
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
 from skills.decision.generate_decision import generate_decision
 
 args = sys.argv[1:]
@@ -79,7 +85,7 @@ def choose_preset(text: str):
 normalized_input = normalize_input(user_input)
 options = extract_options(normalized_input)
 preset, weights = choose_preset(user_input)
-result = generate_decision(user_input, options, weights=weights)
+result = generate_decision(normalized_input)
 result["preset"] = preset
 
 payload = {
