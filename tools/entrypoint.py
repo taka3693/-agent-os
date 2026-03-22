@@ -126,7 +126,22 @@ def main():
             sys.exit(1)
         
         request = sys.argv[2]
-        cycles = int(sys.argv[3]) if len(sys.argv) > 3 else 2
+        if len(sys.argv) > 3:
+            try:
+                cycles = int(sys.argv[3])
+                if cycles <= 0:
+                    raise ValueError("cycles must be > 0")
+                if cycles > 10:
+                    raise ValueError("cycles too large")
+            except ValueError:
+                print(json.dumps({
+                    "ok": False,
+                    "error": "invalid_cycles",
+                    "detail": f"cycles must be integer between 1 and 10, got: {sys.argv[3]}"
+                }, ensure_ascii=False))
+                sys.exit(1)
+        else:
+            cycles = 2
         result = decision_cycle(request, cycles)
         print(json.dumps(result, ensure_ascii=False, indent=2))
     
