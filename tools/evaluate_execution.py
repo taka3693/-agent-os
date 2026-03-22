@@ -1,11 +1,3 @@
-
-def _is_real_action(action_type):
-    return action_type not in ("plan", "acknowledged")
-
-
-import json
-import sys
-
 import json
 import sys
 
@@ -23,12 +15,15 @@ ACTION_WEIGHTS = {
 def evaluate(results):
     weighted_success = 0.0
     real_action_count = 0
+    
+    for r in results:
+        action_type = r.get("action_type", "plan")
+        weight = ACTION_WEIGHTS.get(action_type, 0.5)  # 未知は0.5
+        
+        # status == "done" を評価
         if r.get("status") == "done":
             weighted_success += weight
-            
-if _is_real_action(action_type):
-    real_action_total += 1
-
+            if action_type not in ("plan", "acknowledged"):
                 real_action_count += 1
         # フォールバック: output文字列チェック
         elif r.get("output") and "executed" in str(r.get("output")):
@@ -41,7 +36,7 @@ if _is_real_action(action_type):
     
     # 実action成功率（実actionのみ）
     real_action_total = sum(1 for r in results if r.get("action_type") not in ("plan", "acknowledged"))
-    real_action_success_rate if real_action_total else 0.0 if real_action_total else 0.0 if real_action_total else 0.0 if real_action_total else 0.0 if real_action_total else 0.0 if real_action_total else 0.0 if real_action_total else 0.0 if real_action_total else 0.0 if real_action_total else 0.0 if real_action_total else 0.0 if real_action_total else 0.0 if real_action_total else 0.0 if real_action_total else 0.0 if real_action_total else 0.0 if real_action_total else 0.0 if real_action_total else 0.0 = real_action_count / real_action_total if real_action_total > 0 else 1.0
+    real_action_success_rate = real_action_count / real_action_total if real_action_total > 0 else 1.0
 
     return {
         "success_rate": round(score, 2),
@@ -50,11 +45,10 @@ if _is_real_action(action_type):
         "total": total,
         "real_action_count": real_action_count,
         "real_action_total": real_action_total,
-        "real_action_success_rate if real_action_total else 0.0 if real_action_total else 0.0 if real_action_total else 0.0 if real_action_total else 0.0 if real_action_total else 0.0 if real_action_total else 0.0 if real_action_total else 0.0 if real_action_total else 0.0 if real_action_total else 0.0 if real_action_total else 0.0 if real_action_total else 0.0 if real_action_total else 0.0 if real_action_total else 0.0 if real_action_total else 0.0 if real_action_total else 0.0 if real_action_total else 0.0": round(real_action_success_rate if real_action_total else 0.0 if real_action_total else 0.0 if real_action_total else 0.0 if real_action_total else 0.0 if real_action_total else 0.0 if real_action_total else 0.0 if real_action_total else 0.0 if real_action_total else 0.0 if real_action_total else 0.0 if real_action_total else 0.0 if real_action_total else 0.0 if real_action_total else 0.0 if real_action_total else 0.0 if real_action_total else 0.0 if real_action_total else 0.0 if real_action_total else 0.0, 2),
+        "real_action_success_rate": round(real_action_success_rate, 2),
         "plan_count": sum(1 for r in results if r.get("action_type") in ("plan", "acknowledged")),
     }
 
 if __name__ == "__main__":
     data = json.loads(sys.stdin.read())
     print(json.dumps(evaluate(data), ensure_ascii=False, indent=2))
-    real_action_total = 0  # 修正: 1回だけ定義
