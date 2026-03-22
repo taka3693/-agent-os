@@ -129,11 +129,15 @@ def main():
         if len(sys.argv) > 3:
             try:
                 cycles = int(sys.argv[3])
+                if cycles <= 0:
+                    raise ValueError("cycles must be > 0")
+                if cycles > 10:
+                    raise ValueError("cycles too large")
             except ValueError:
                 print(json.dumps({
                     "ok": False,
                     "error": "invalid_cycles",
-                    "detail": f"cycles must be integer, got: {sys.argv[3]}"
+                    "detail": f"cycles must be integer between 1 and 10, got: {sys.argv[3]}"
                 }, ensure_ascii=False))
                 sys.exit(1)
         else:
