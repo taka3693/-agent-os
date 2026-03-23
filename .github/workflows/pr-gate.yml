@@ -130,6 +130,8 @@ jobs:
                   lines.append(f"- chain_length: `{chain_length}`")
 
               lines.append(f"- state_match: **{state_summary.get('state_match', 'unknown')}**")
+              lines.append(f"- match_mode: {state_summary.get('match_mode')}")
+              lines.append(f"- match_confidence: {state_summary.get('match_confidence')}")
 
               reasons = state_summary.get("reasons") or []
               if reasons:
