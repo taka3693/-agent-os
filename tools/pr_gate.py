@@ -38,7 +38,7 @@ def get_changed_files(repo: str, branch: str, base: str) -> List[str]:
     """変更ファイル一覧を取得"""
     # ローカルgitを使用
     result = subprocess.run(
-        ["git", "diff", "--name-only", f"{base}...{branch}"],
+        ["git", "diff", "--name-only", f"origin/{base}...HEAD"],
         capture_output=True,
         text=True,
         cwd=ROOT
@@ -50,7 +50,7 @@ def get_changed_files(repo: str, branch: str, base: str) -> List[str]:
 def get_diff_summary(repo: str, branch: str, base: str) -> Dict[str, int]:
     """diff統計を取得"""
     result = subprocess.run(
-        ["git", "diff", "--shortstat", f"{base}...{branch}"],
+        ["git", "diff", "--shortstat", f"origin/{base}...HEAD"],
         capture_output=True,
         text=True,
         cwd=ROOT
@@ -76,22 +76,47 @@ def get_diff_summary(repo: str, branch: str, base: str) -> Dict[str, int]:
     
     return summary
 
-def assess_risk(changed_files: List[str], diff_summary: Dict[str, int], policy: Dict[str, Any]) -> str:
-    """リスク判定"""
-    # protected_pathsに変更がある場合はhigh
+def assess_risk(
+    changed_files: List[str],
+    diff_summary: Dict[str, int],
+    policy: Dict[str, Any],
+    blocked_deletions: List[str] | None = None,
+) -> str:
+    blocked_deletions = blocked_deletions or []
+
+    if blocked_deletions:
+        return "high"
+
+    changed_count = diff_summary.get("changed_files", diff_summary.get("files", len(changed_files)))
+    additions = diff_summary.get("additions", 0)
+    deletions = diff_summary.get("deletions", 0)
+
     for file in changed_files:
         for protected in policy.get("protected_paths", []):
             if file.startswith(protected) or file == protected:
                 return "high"
-    
-    # 変更規模が大きい場合はmedium
-    if diff_summary["files"] > policy.get("max_changed_files_for_low", 3):
+
+    if (
+        changed_count >= policy.get("max_files_changed", 20)
+        or additions >= policy.get("max_additions", 500)
+        or deletions >= policy.get("max_deletions", 200)
+    ):
+        return "high"
+
+    if (
+        changed_count > policy.get("max_changed_files_for_low", 3)
+        or changed_count >= policy.get("warn_files_changed", 8)
+    ):
         return "medium"
-    
-    total_lines = diff_summary["additions"] + diff_summary["deletions"]
-    if total_lines > policy.get("max_diff_lines_for_low", 100):
+
+    total_lines = additions + deletions
+    if (
+        total_lines > policy.get("max_diff_lines_for_low", 100)
+        or additions >= policy.get("warn_additions", 150)
+        or deletions >= policy.get("warn_deletions", 50)
+    ):
         return "medium"
-    
+
     return "low"
 
 def detect_blocked_deletions(base: str, branch: str):
@@ -99,7 +124,7 @@ def detect_blocked_deletions(base: str, branch: str):
 
     # ① committed diff
     result = subprocess.run(
-        ["git", "diff", "--name-status", f"{base}...{branch}"],
+        ["git", "diff", "--name-status", f"origin/{base}...HEAD"],
         capture_output=True,
         text=True,
         cwd=ROOT
@@ -310,163 +335,58 @@ def save_state(data: Dict[str, Any]) -> Path:
     state_file.write_text(json.dumps(state, ensure_ascii=False, indent=2))
     return state_file
 
-def main():
-    """メインエントリーポイント"""
-    import argparse
-    
-    parser = argparse.ArgumentParser(description="PR Gate")
-    parser.add_argument("--repo", required=True, help="Repository (e.g., taka3693/-agent-os)")
-    parser.add_argument("--branch", required=True, help="Feature branch")
-    parser.add_argument("--base", default="main", help="Base branch")
-    parser.add_argument("--create-pr", action="store_true", help="Create PR using gh CLI")
-    
-    args = parser.parse_args()
-    
-    # ポリシー読み込み
-    policy = load_policy()
-    
-    # 変更取得
-    changed_files = get_changed_files(args.repo, args.branch, args.base)
-    diff_summary = get_diff_summary(args.repo, args.branch, args.base)
-    
-    # リスク判定
-    blocked_deletions = detect_blocked_deletions(args.base, args.branch)
-    risk_level = assess_risk(
-        changed_files, diff_summary, policy, blocked_deletions
-    )
-
-    
-    # チェック
-    checks = {
-        "syntax": check_syntax(),
-        "tests": check_tests(),
-        "freshness": check_freshness()
-    }
-    
-    # PR下書き生成
-    pr_title = generate_pr_title(args.branch, changed_files)
-    pr_body = generate_pr_body(changed_files, diff_summary, risk_level)
-    
-    # PR作成URL生成
-    pr_url = generate_pr_url(args.repo, args.branch, args.base)
-    
-    # PR作成コマンド生成
-    create_pr_command = generate_create_pr_command(
-        args.repo, args.branch, args.base, pr_title, pr_body
-    )
-    
-    # 手動レビューチェックリスト生成
-    manual_review_checklist = generate_manual_review_checklist(
-        changed_files, policy.get("protected_paths", []), risk_level
-    )
-    
-    # マージ推奨判定
-    merge_recommendation = decide_merge_recommendation(
-        risk_level, blocked_deletions
-    )
-    
-    # PR作成（--create-pr指定時）
-    pr_result = None
-    if args.create_pr:
-        pr_result = create_pr_with_gh(
-            args.repo, args.branch, args.base, pr_title, pr_body
-        )
-        # pr_urlを更新（作成成功時）
-        if pr_result.get("pr_created"):
-            pr_url = pr_result.get("pr_url", pr_url)
-    
-    checklist = build_checklist(
-        risk_level=risk_level,
-        merge_recommendation=merge_recommendation,
-        blocked_deletions=blocked_deletions,
-    )
-
-    # 結果まとめ
-    result = {
-        "ok": True,
-        "repo": args.repo,
-        "branch": args.branch,
-        "base": args.base,
-        "risk_level": risk_level,
-        "changed_files": changed_files,
-        "diff_summary": diff_summary,
-        "checks": checks,
-        "merge_recommendation": merge_recommendation,
-        "pr_title": pr_title,
-        "pr_body": pr_body,
-        "pr_url": pr_url,
-        "create_pr_command": create_pr_command,
-        "manual_review_checklist": manual_review_checklist,
-        "blocked_deletions": blocked_deletions,
-        "checklist": checklist
-    }
-    
-    # PR作成結果を追加
-    if pr_result:
-        result["pr_created"] = pr_result.get("pr_created", False)
-        result["pr_command_output"] = pr_result.get("pr_command_output")
-        if pr_result.get("error"):
-            result["error"] = pr_result.get("error")
-        if pr_result.get("pr_command_stderr"):
-            result["pr_command_stderr"] = pr_result.get("pr_command_stderr")
-    
-    # 状態保存
-    state_file = save_state(result)
-    result["state_file"] = str(state_file)
-    
-    print(json.dumps(result, ensure_ascii=False, indent=2))
-
-if __name__ == "__main__":
-    main()
 
 
+def normalize_check(value: str) -> str:
+    v = (value or "unknown").strip().lower()
+    if v not in {"pass", "fail", "unknown"}:
+        return "unknown"
+    return v
 
-# --- deletion guard design patch ---
-def assess_risk(
-    changed_files: List[str],
-    diff_summary: Dict[str, int],
-    policy: Dict[str, Any],
-    blocked_deletions: List[str] | None = None,
-) -> str:
-    blocked_deletions = blocked_deletions or []
 
-    if blocked_deletions:
-        return "high"
-
-    changed_count = diff_summary.get("changed_files", len(changed_files))
-    additions = diff_summary.get("additions", 0)
-    deletions = diff_summary.get("deletions", 0)
-
-    if (
-        changed_count >= policy.get("max_files_changed", 20)
-        or additions >= policy.get("max_additions", 500)
-        or deletions >= policy.get("max_deletions", 200)
-    ):
-        return "high"
-
-    if (
-        changed_count >= policy.get("warn_files_changed", 8)
-        or additions >= policy.get("warn_additions", 150)
-        or deletions >= policy.get("warn_deletions", 50)
-    ):
-        return "medium"
-
-    return "low"
+def has_deletion_justification(text: str) -> bool:
+    t = (text or "").lower()
+    required_markers = [
+        "[deletion-approved]",
+        "[migration]",
+        "[replace:",
+    ]
+    return any(marker in t for marker in required_markers)
 
 
 def decide_merge_recommendation(
     risk_level: str,
     blocked_deletions: List[str] | None = None,
+    checks: Dict[str, str] | None = None,
 ) -> str:
     blocked_deletions = blocked_deletions or []
+    checks = checks or {
+        "syntax": "unknown",
+        "tests": "unknown",
+        "freshness": "unknown",
+    }
 
     if blocked_deletions:
         return "hard_block"
 
-    if risk_level in {"high", "medium"}:
+    if checks.get("syntax") == "fail":
+        return "hard_block"
+
+    if checks.get("tests") == "fail":
+        return "hard_block"
+
+    if risk_level == "high":
+        if checks.get("freshness") == "fail":
+            return "hard_block"
+        return "manual_review"
+
+    if risk_level == "medium":
         return "manual_approval_required"
 
-    return "merge_allowed"
+    if "fail" in checks.values():
+        return "manual_review"
+
+    return "safe_merge"
 
 
 def build_checklist(
@@ -493,3 +413,145 @@ def build_checklist(
         checklist.append("Safe to merge under current policy")
 
     return checklist
+
+def main():
+    """メインエントリーポイント"""
+    import argparse
+
+    parser = argparse.ArgumentParser(description="PR Gate")
+    parser.add_argument("--repo", required=True, help="Repository (e.g., taka3693/-agent-os)")
+    parser.add_argument("--branch", required=True, help="Feature branch")
+    parser.add_argument("--base", default="main", help="Base branch")
+    parser.add_argument("--create-pr", action="store_true", help="Create PR using gh CLI")
+    parser.add_argument("--strict", action="store_true", help="Exit non-zero on hard block")
+    parser.add_argument("--syntax", default="unknown", help="Override syntax check: pass|fail|unknown")
+    parser.add_argument("--tests", default="unknown", help="Override tests check: pass|fail|unknown")
+    parser.add_argument("--freshness", default="unknown", help="Override freshness check: pass|fail|unknown")
+    parser.add_argument("--change-context", default="", help="PR title/body or change justification markers")
+
+    args = parser.parse_args()
+
+    # ポリシー読み込み
+    policy = load_policy()
+
+    # 変更取得
+    changed_files = get_changed_files(args.repo, args.branch, args.base)
+    diff_summary = get_diff_summary(args.repo, args.branch, args.base)
+
+    # リスク判定
+    blocked_deletions = detect_blocked_deletions(args.base, args.branch)
+    risk_level = assess_risk(
+        changed_files,
+        diff_summary,
+        policy,
+        blocked_deletions=blocked_deletions,
+    )
+
+    # チェック（CLI override優先、unknownなら既存関数へフォールバック）
+    syntax_check = normalize_check(args.syntax)
+    tests_check = normalize_check(args.tests)
+    freshness_check = normalize_check(args.freshness)
+
+    checks = {
+        "syntax": check_syntax() if syntax_check == "unknown" else syntax_check,
+        "tests": check_tests() if tests_check == "unknown" else tests_check,
+        "freshness": check_freshness() if freshness_check == "unknown" else freshness_check,
+    }
+
+    deleted_files = diff_summary.get("deleted_files", [])
+    has_justification = has_deletion_justification(args.change_context)
+
+    warnings = []
+    approval_requirements = []
+
+    protected_paths = tuple(policy.get("protected_paths", []))
+    if protected_paths and any(f.startswith(protected_paths) for f in changed_files):
+        approval_requirements.append("maintainer_review")
+
+    if deleted_files and not has_justification:
+        warnings.append("deletions_without_justification")
+        approval_requirements.append("deletion_justification")
+
+    # PR下書き生成
+    pr_title = generate_pr_title(args.branch, changed_files)
+    pr_body = generate_pr_body(changed_files, diff_summary, risk_level)
+
+    # PR作成URL生成
+    pr_url = generate_pr_url(args.repo, args.branch, args.base)
+
+    # PR作成コマンド生成
+    create_pr_command = generate_create_pr_command(
+        args.repo, args.branch, args.base, pr_title, pr_body
+    )
+
+    # 手動レビューチェックリスト生成
+    manual_review_checklist = generate_manual_review_checklist(
+        changed_files, policy.get("protected_paths", []), risk_level
+    )
+
+    # マージ推奨判定
+    merge_recommendation = decide_merge_recommendation(
+        risk_level, blocked_deletions, checks
+    )
+
+    if deleted_files and not has_justification and risk_level == "high":
+        merge_recommendation = "hard_block"
+
+    # PR作成（--create-pr指定時）
+    pr_result = None
+    if args.create_pr:
+        pr_result = create_pr_with_gh(
+            args.repo, args.branch, args.base, pr_title, pr_body
+        )
+        # pr_urlを更新（作成成功時）
+        if pr_result.get("pr_created"):
+            pr_url = pr_result.get("pr_url", pr_url)
+
+    checklist = build_checklist(
+        risk_level=risk_level,
+        merge_recommendation=merge_recommendation,
+        blocked_deletions=blocked_deletions,
+    )
+
+    # 結果まとめ
+    result = {
+        "ok": True,
+        "repo": args.repo,
+        "branch": args.branch,
+        "base": args.base,
+        "risk_level": risk_level,
+        "changed_files": changed_files,
+        "diff_summary": diff_summary,
+        "checks": checks,
+        "merge_recommendation": merge_recommendation,
+        "pr_title": pr_title,
+        "pr_body": pr_body,
+        "pr_url": pr_url,
+        "create_pr_command": create_pr_command,
+        "manual_review_checklist": manual_review_checklist,
+        "blocked_deletions": blocked_deletions,
+        "warnings": warnings,
+        "approval_requirements": approval_requirements,
+        "checklist": checklist,
+    }
+
+    # PR作成結果を追加
+    if pr_result:
+        result["pr_created"] = pr_result.get("pr_created", False)
+        result["pr_command_output"] = pr_result.get("pr_command_output")
+        if pr_result.get("error"):
+            result["error"] = pr_result.get("error")
+        if pr_result.get("pr_command_stderr"):
+            result["pr_command_stderr"] = pr_result.get("pr_command_stderr")
+
+    # 状態保存
+    state_file = save_state(result)
+    result["state_file"] = str(state_file)
+
+    print(json.dumps(result, ensure_ascii=False, indent=2))
+    if args.strict and result.get("merge_recommendation") == "hard_block":
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()
