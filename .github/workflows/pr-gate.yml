@@ -30,11 +30,17 @@ jobs:
         run: |
           python -m pip install --upgrade pip pytest
 
+      - name: Run syntax check
+        id: syntax_check
+        continue-on-error: true
+        run: |
+          python -m py_compile tools/pr_gate.py
+
       - name: Run PR gate tests
         id: pr_gate_tests
         continue-on-error: true
         run: |
-          pytest -q tests/test_pr_gate_deletion_guard.py
+          pytest -q tests/test_pr_gate_deletion_guard.py tests/test_pr_gate_safe_merge.py
 
       - name: Run PR gate
         id: pr_gate
@@ -45,13 +51,18 @@ jobs:
             TESTS_STATUS="fail"
           fi
 
+          SYNTAX_STATUS="pass"
+          if [ "${{ steps.syntax_check.outcome }}" != "success" ]; then
+            SYNTAX_STATUS="fail"
+          fi
+
           set +e
           python tools/pr_gate.py \
             --repo "${{ github.repository }}" \
             --branch "${{ github.head_ref }}" \
             --base "${{ github.event.pull_request.base.ref }}" \
             --strict \
-            --syntax unknown \
+            --syntax "$SYNTAX_STATUS" \
             --tests "$TESTS_STATUS" \
             --freshness unknown \
             --change-context "${{ github.event.pull_request.title }} ${{ github.event.pull_request.body }}" \
@@ -68,19 +79,10 @@ jobs:
           p = Path("pr_gate_result.json")
           data = json.loads(p.read_text(encoding="utf-8"))
 
-          def one_line(v):
-              if isinstance(v, list):
-                  return " | ".join(str(x) for x in v)
-              return str(v)
-
           with open("${GITHUB_OUTPUT}", "a", encoding="utf-8") as f:
-              f.write(f"risk_level={data.get('risk_level','unknown')}\n")
               f.write(f"merge_recommendation={data.get('merge_recommendation','unknown')}\n")
-              f.write(f"blocked_deletions={one_line(data.get('blocked_deletions', []))}\n")
-              f.write(f"warnings={one_line(data.get('warnings', []))}\n")
-              f.write(f"approval_requirements={one_line(data.get('approval_requirements', []))}\n")
-              f.write(f"checks={json.dumps(data.get('checks', {}), ensure_ascii=False)}\n")
               f.write("comment_body<<EOF\n")
+              f.write("<!-- pr-gate-comment -->\n")
               f.write("## PR Gate Result\n\n")
               f.write(f"- risk_level: **{data.get('risk_level','unknown')}**\n")
               f.write(f"- merge_recommendation: **{data.get('merge_recommendation','unknown')}**\n")
@@ -115,21 +117,19 @@ jobs:
 
             const existing = comments.find(c => c.body && c.body.includes(marker));
 
-            const fullBody = marker + "\n" + body;
-
             if (existing) {
               await github.rest.issues.updateComment({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 comment_id: existing.id,
-                body: fullBody,
+                body
               });
             } else {
               await github.rest.issues.createComment({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: context.issue.number,
-                body: fullBody,
+                body
               });
             }
 
