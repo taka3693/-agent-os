@@ -76,62 +76,6 @@ def get_diff_summary(repo: str, branch: str, base: str) -> Dict[str, int]:
     
     return summary
 
-def assess_risk(changed_files: List[str], diff_summary: Dict[str, int], policy: Dict[str, Any]) -> str:
-    """リスク判定"""
-    # protected_pathsに変更がある場合はhigh
-    for file in changed_files:
-        for protected in policy.get("protected_paths", []):
-            if file.startswith(protected) or file == protected:
-                return "high"
-    
-    # 変更規模が大きい場合はmedium
-    if diff_summary["files"] > policy.get("max_changed_files_for_low", 3):
-        return "medium"
-    
-    total_lines = diff_summary["additions"] + diff_summary["deletions"]
-    if total_lines > policy.get("max_diff_lines_for_low", 100):
-        return "medium"
-    
-    return "low"
-
-def detect_blocked_deletions(base: str, branch: str):
-    blocked = []
-
-    # ① committed diff
-    result = subprocess.run(
-        ["git", "diff", "--name-status", f"{base}...{branch}"],
-        capture_output=True,
-        text=True,
-        cwd=ROOT
-    )
-
-    if result.returncode == 0:
-        for line in result.stdout.splitlines():
-            parts = line.strip().split("\t", 1)
-            if len(parts) != 2:
-                continue
-            status, path = parts
-            if status == "D" and (path.startswith("tools/") or path.startswith("config/")):
-                blocked.append(path)
-
-    # ② working tree diff（ここが重要）
-    result2 = subprocess.run(
-        ["git", "status", "--porcelain"],
-        capture_output=True,
-        text=True,
-        cwd=ROOT
-    )
-
-    if result2.returncode == 0:
-        for line in result2.stdout.splitlines():
-            if line.startswith(" D "):
-                path = line[3:].strip()
-                if path.startswith("tools/") or path.startswith("config/"):
-                    blocked.append(path)
-
-    return sorted(set(blocked))
-
-
 def check_syntax() -> str:
     """構文チェック"""
     result = subprocess.run(
