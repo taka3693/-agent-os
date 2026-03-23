@@ -538,6 +538,12 @@ def main():
         if merge_recommendation == "safe_merge":
             merge_recommendation = "manual_approval_required"
 
+
+    task_status = state_summary.get("task_status")
+    if task_status and task_status != "completed":
+        if merge_recommendation == "safe_merge":
+            merge_recommendation = "manual_approval_required"
+
     if deleted_files and not has_justification and risk_level == "high":
         merge_recommendation = "hard_block"
 
