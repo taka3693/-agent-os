@@ -94,12 +94,28 @@ def assess_risk(changed_files: List[str], diff_summary: Dict[str, int], policy: 
     
     return "low"
 
-def detect_blocked_deletions(changed_files):
+def detect_blocked_deletions(base: str, branch: str):
+    result = subprocess.run(
+        ["git", "diff", "--name-status", f"{base}...{branch}"],
+        capture_output=True,
+        text=True,
+        cwd=ROOT
+    )
+    if result.returncode != 0:
+        return []
+
     blocked = []
-    for f in changed_files:
-        if f.startswith("tools/") or f.startswith("config/"):
-            blocked.append(f)
-    return blocked
+    for line in result.stdout.splitlines():
+        parts = line.strip().split("\t", 1)
+        if len(parts) != 2:
+            continue
+        status, path = parts
+        if status != "D":
+            continue
+        if path.startswith("tools/") or path.startswith("config/"):
+            blocked.append(path)
+
+    return sorted(set(blocked))
 
 
 def check_syntax() -> str:
@@ -302,7 +318,7 @@ def main():
     # リスク判定
     risk_level = assess_risk(changed_files, diff_summary, policy)
 
-    blocked_deletions = detect_blocked_deletions(changed_files)
+    blocked_deletions = detect_blocked_deletions(base, branch)
     if blocked_deletions:
         risk_level = "high"
 
