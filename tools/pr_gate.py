@@ -318,7 +318,7 @@ def main():
     # リスク判定
     risk_level = assess_risk(changed_files, diff_summary, policy)
 
-    blocked_deletions = detect_blocked_deletions(base, branch)
+    blocked_deletions = detect_blocked_deletions(args.base, args.branch)
     if blocked_deletions:
         risk_level = "high"
 
