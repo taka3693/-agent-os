@@ -49,16 +49,6 @@ jobs:
               pull_number
             });
 
-            const reviews = await github.paginate(
-              github.rest.pulls.listReviews,
-              {
-                owner,
-                repo,
-                pull_number,
-                per_page: 100
-              }
-            );
-
             const touchedWorkflows = files.filter(f =>
               f.filename.startsWith('.github/workflows/')
             );
@@ -78,34 +68,22 @@ jobs:
             const labels = (pr.data.labels || []).map(l => l.name);
             const hasWorkflowApprovalLabel = labels.includes(WORKFLOW_APPROVAL_LABEL);
 
-            const latestReviewByUser = new Map();
-            for (const r of reviews) {
-              if (!r.user?.login) continue;
-              latestReviewByUser.set(r.user.login, r);
-            }
-
-            const trustedApprovals = [...latestReviewByUser.values()].filter(r =>
-              r.state === 'APPROVED' &&
-              TRUSTED_ASSOCIATIONS.has(r.author_association)
-            );
+            const authorAssociation = pr.data.author_association || 'NONE';
+            const authorLogin = pr.data.user?.login || 'unknown';
+            const isTrustedAuthor = TRUSTED_ASSOCIATIONS.has(authorAssociation);
 
             const summaryLines = [];
             summaryLines.push(`PR #${pull_number}`);
             summaryLines.push(`workflow files touched: ${touchedWorkflows.length}`);
             summaryLines.push(`approval label present: ${hasWorkflowApprovalLabel}`);
-            summaryLines.push(`trusted approvals: ${trustedApprovals.length}`);
+            summaryLines.push(`author: ${authorLogin}`);
+            summaryLines.push(`author association: ${authorAssociation}`);
+            summaryLines.push(`trusted author: ${isTrustedAuthor}`);
             summaryLines.push('');
             if (touchedWorkflows.length > 0) {
               summaryLines.push('Touched workflow files:');
               for (const f of touchedWorkflows) {
                 summaryLines.push(`- ${f.filename} [${f.status}]`);
-              }
-              summaryLines.push('');
-            }
-            if (trustedApprovals.length > 0) {
-              summaryLines.push('Trusted approvals:');
-              for (const r of trustedApprovals) {
-                summaryLines.push(`- ${r.user.login} (${r.author_association})`);
               }
             }
 
@@ -140,11 +118,12 @@ jobs:
               return;
             }
 
-            if (trustedApprovals.length < 1) {
+            if (!isTrustedAuthor) {
               core.setFailed(
                 [
-                  'bootstrap-guard: workflow change detected without trusted approval',
-                  'require at least 1 APPROVED review from OWNER/MEMBER/COLLABORATOR',
+                  'bootstrap-guard: workflow change detected from untrusted author',
+                  `author association: ${authorAssociation}`,
+                  'require PR author to be OWNER/MEMBER/COLLABORATOR',
                   ...touchedWorkflows.map(f => `- ${f.filename} [${f.status}]`)
                 ].join('\n')
               );
@@ -154,10 +133,10 @@ jobs:
             if (protectedMutations.length > 0) {
               core.notice(
                 [
-                  'bootstrap-guard: protected workflow mutation allowed by strict approval',
+                  'bootstrap-guard: protected workflow mutation allowed by strict label + trusted author',
                   ...protectedMutations.map(f => `- ${f.filename} [${f.status}]`)
                 ].join('\n')
               );
             } else {
-              core.notice('bootstrap-guard: workflow change allowed by strict approval');
+              core.notice('bootstrap-guard: workflow change allowed by strict label + trusted author');
             }
