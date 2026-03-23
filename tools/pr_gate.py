@@ -13,6 +13,7 @@ PR Gate - PR作成前のリスク判定と承認待ち状態管理
 import sys
 import json
 import subprocess
+import fnmatch
 from pathlib import Path
 from datetime import datetime
 from typing import Dict, Any, List, Optional
