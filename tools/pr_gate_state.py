@@ -22,8 +22,14 @@ def _iter_json_files(path: Path) -> Iterable[Path]:
 
 
 def _latest_task(change_context: str = "") -> Optional[Dict[str, Any]]:
-    d = STATE_DIR / "tasks"
-    files = list(_iter_json_files(d))
+    dirs = [
+        STATE_DIR / "tasks",
+        STATE_DIR / "router_tasks",
+    ]
+    files = []
+    for d in dirs:
+        files.extend(list(_iter_json_files(d)))
+    files = sorted(files, key=lambda p: p.stat().st_mtime, reverse=True)
 
     # 1. query match 優先
     ctx = (change_context or "").lower().strip()
@@ -39,8 +45,17 @@ def _latest_task(change_context: str = "") -> Optional[Dict[str, Any]]:
                 continue
 
             query = str(obj.get("query", "")).lower()
+            change_context = str(obj.get("change_context", "")).lower()
+            work_summary = str(obj.get("work_summary", "")).lower()
+            branch = str(obj.get("branch", "")).lower()
+            files_touched = " ".join(str(x).lower() for x in (obj.get("files_touched") or []))
+
             haystack = " ".join([
                 query,
+                change_context,
+                work_summary,
+                branch,
+                files_touched,
                 str(obj.get("task_id", "")).lower(),
                 str(obj.get("selected_skill", "")).lower(),
                 " ".join(str(x).lower() for x in (obj.get("selected_skills") or [])),
@@ -64,7 +79,7 @@ def _latest_task(change_context: str = "") -> Optional[Dict[str, Any]]:
         if best_obj and best_score > 0:
             best_obj["_match_mode"] = "query_match"
             best_obj["_match_confidence"] = "high" if best_score >= 2 or best_score == 100 else "medium"
-            return best_obj
+            return _normalize_task(best_obj)
 
     # 2. fallback: 最新
     for p in files:
@@ -75,9 +90,34 @@ def _latest_task(change_context: str = "") -> Optional[Dict[str, Any]]:
             obj["_source_file"] = str(p.relative_to(ROOT))
             obj["_match_mode"] = "latest_fallback"
             obj["_match_confidence"] = "medium" if ctx else "low"
-            return obj
+            return _normalize_task(obj)
 
     return None
+
+
+def _normalize_task(task: Dict[str, Any]) -> Dict[str, Any]:
+    if not isinstance(task, dict):
+        return task
+
+    source = str(task.get("_source_file") or "")
+
+    # router_tasks are lightweight; normalize them to state-summary shape
+    if "state/router_tasks/" in source:
+        if task.get("status") is None:
+            task["status"] = "completed"
+        if task.get("selected_skills") is None and task.get("selected_skill") is not None:
+            task["selected_skills"] = [task.get("selected_skill")]
+        if task.get("planning_mode") is None:
+            task["planning_mode"] = "autonomous"
+        pipeline = task.get("pipeline")
+        if not isinstance(pipeline, dict):
+            pipeline = {}
+            task["pipeline"] = pipeline
+        if pipeline.get("chain_length") is None:
+            skills = task.get("selected_skills") or []
+            pipeline["chain_length"] = len(skills) if isinstance(skills, list) and skills else 1
+
+    return task
 
 
 def _pick_task_id(task: Dict[str, Any]) -> Any:
