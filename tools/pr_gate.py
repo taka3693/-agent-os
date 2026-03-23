@@ -95,25 +95,39 @@ def assess_risk(changed_files: List[str], diff_summary: Dict[str, int], policy: 
     return "low"
 
 def detect_blocked_deletions(base: str, branch: str):
+    blocked = []
+
+    # ① committed diff
     result = subprocess.run(
         ["git", "diff", "--name-status", f"{base}...{branch}"],
         capture_output=True,
         text=True,
         cwd=ROOT
     )
-    if result.returncode != 0:
-        return []
 
-    blocked = []
-    for line in result.stdout.splitlines():
-        parts = line.strip().split("\t", 1)
-        if len(parts) != 2:
-            continue
-        status, path = parts
-        if status != "D":
-            continue
-        if path.startswith("tools/") or path.startswith("config/"):
-            blocked.append(path)
+    if result.returncode == 0:
+        for line in result.stdout.splitlines():
+            parts = line.strip().split("\t", 1)
+            if len(parts) != 2:
+                continue
+            status, path = parts
+            if status == "D" and (path.startswith("tools/") or path.startswith("config/")):
+                blocked.append(path)
+
+    # ② working tree diff（ここが重要）
+    result2 = subprocess.run(
+        ["git", "status", "--porcelain"],
+        capture_output=True,
+        text=True,
+        cwd=ROOT
+    )
+
+    if result2.returncode == 0:
+        for line in result2.stdout.splitlines():
+            if line.startswith(" D "):
+                path = line[3:].strip()
+                if path.startswith("tools/") or path.startswith("config/"):
+                    blocked.append(path)
 
     return sorted(set(blocked))
 
