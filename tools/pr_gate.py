@@ -420,9 +420,8 @@ if __name__ == "__main__":
     main()
 
 
-# --- deletion guard design patch ---
-_original_assess_risk = assess_risk
 
+# --- deletion guard design patch ---
 def assess_risk(
     changed_files: List[str],
     diff_summary: Dict[str, int],
@@ -430,9 +429,29 @@ def assess_risk(
     blocked_deletions: List[str] | None = None,
 ) -> str:
     blocked_deletions = blocked_deletions or []
+
     if blocked_deletions:
         return "high"
-    return _original_assess_risk(changed_files, diff_summary, policy)
+
+    changed_count = diff_summary.get("changed_files", len(changed_files))
+    additions = diff_summary.get("additions", 0)
+    deletions = diff_summary.get("deletions", 0)
+
+    if (
+        changed_count >= policy.get("max_files_changed", 20)
+        or additions >= policy.get("max_additions", 500)
+        or deletions >= policy.get("max_deletions", 200)
+    ):
+        return "high"
+
+    if (
+        changed_count >= policy.get("warn_files_changed", 8)
+        or additions >= policy.get("warn_additions", 150)
+        or deletions >= policy.get("warn_deletions", 50)
+    ):
+        return "medium"
+
+    return "low"
 
 
 def decide_merge_recommendation(
@@ -474,36 +493,3 @@ def build_checklist(
         checklist.append("Safe to merge under current policy")
 
     return checklist
-
-
-# --- final assess_risk override ---
-def assess_risk(
-    changed_files: List[str],
-    diff_summary: Dict[str, int],
-    policy: Dict[str, Any],
-    blocked_deletions: List[str] | None = None,
-) -> str:
-    blocked_deletions = blocked_deletions or []
-
-    if blocked_deletions:
-        return "high"
-
-    changed_count = diff_summary.get("changed_files", len(changed_files))
-    additions = diff_summary.get("additions", 0)
-    deletions = diff_summary.get("deletions", 0)
-
-    if (
-        changed_count >= policy.get("max_files_changed", 20)
-        or additions >= policy.get("max_additions", 500)
-        or deletions >= policy.get("max_deletions", 200)
-    ):
-        return "high"
-
-    if (
-        changed_count >= policy.get("warn_files_changed", 8)
-        or additions >= policy.get("warn_additions", 150)
-        or deletions >= policy.get("warn_deletions", 50)
-    ):
-        return "medium"
-
-    return "low"
