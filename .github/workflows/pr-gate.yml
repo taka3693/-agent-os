@@ -3,6 +3,10 @@ name: pr-gate
 on:
   pull_request:
 
+permissions:
+  contents: read
+  pull-requests: write
+
 jobs:
   pr-gate:
     runs-on: ubuntu-latest
@@ -33,12 +37,15 @@ jobs:
           pytest -q tests/test_pr_gate_deletion_guard.py
 
       - name: Run PR gate
+        id: pr_gate
+        continue-on-error: true
         run: |
           TESTS_STATUS="pass"
           if [ "${{ steps.pr_gate_tests.outcome }}" != "success" ]; then
             TESTS_STATUS="fail"
           fi
 
+          set +e
           python tools/pr_gate.py \
             --repo "${{ github.repository }}" \
             --branch "${{ github.head_ref }}" \
@@ -47,4 +54,83 @@ jobs:
             --syntax unknown \
             --tests "$TESTS_STATUS" \
             --freshness unknown \
-            --change-context "${{ github.event.pull_request.title }} ${{ github.event.pull_request.body }}"
+            --change-context "${{ github.event.pull_request.title }} ${{ github.event.pull_request.body }}" \
+            > pr_gate_result.json
+          PR_GATE_EXIT=$?
+          set -e
+
+          echo "exit_code=$PR_GATE_EXIT" >> "$GITHUB_OUTPUT"
+
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          p = Path("pr_gate_result.json")
+          data = json.loads(p.read_text(encoding="utf-8"))
+
+          def one_line(v):
+              if isinstance(v, list):
+                  return " | ".join(str(x) for x in v)
+              return str(v)
+
+          with open("${GITHUB_OUTPUT}", "a", encoding="utf-8") as f:
+              f.write(f"risk_level={data.get('risk_level','unknown')}\n")
+              f.write(f"merge_recommendation={data.get('merge_recommendation','unknown')}\n")
+              f.write(f"blocked_deletions={one_line(data.get('blocked_deletions', []))}\n")
+              f.write(f"warnings={one_line(data.get('warnings', []))}\n")
+              f.write(f"approval_requirements={one_line(data.get('approval_requirements', []))}\n")
+              f.write(f"checks={json.dumps(data.get('checks', {}), ensure_ascii=False)}\n")
+              f.write("comment_body<<EOF\n")
+              f.write("## PR Gate Result\n\n")
+              f.write(f"- risk_level: **{data.get('risk_level','unknown')}**\n")
+              f.write(f"- merge_recommendation: **{data.get('merge_recommendation','unknown')}**\n")
+              f.write(f"- checks: `{json.dumps(data.get('checks', {}), ensure_ascii=False)}`\n")
+              if data.get("blocked_deletions"):
+                  f.write(f"- blocked_deletions: `{', '.join(data['blocked_deletions'])}`\n")
+              if data.get("warnings"):
+                  f.write(f"- warnings: `{', '.join(data['warnings'])}`\n")
+              if data.get("approval_requirements"):
+                  f.write(f"- approval_requirements: `{', '.join(data['approval_requirements'])}`\n")
+              checklist = data.get("checklist", [])
+              if checklist:
+                  f.write("\n### Checklist\n")
+                  for item in checklist:
+                      f.write(f"- {item}\n")
+              f.write("EOF\n")
+          PY
+
+      - name: Comment PR with PR gate result
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const body = `${{ steps.pr_gate.outputs.comment_body }}`;
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body
+            });
+
+      - name: Upload PR gate result artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr-gate-result
+          path: pr_gate_result.json
+
+      - name: Enforce PR gate result
+        if: always()
+        run: |
+          echo "merge_recommendation=${{ steps.pr_gate.outputs.merge_recommendation }}"
+          echo "exit_code=${{ steps.pr_gate.outputs.exit_code }}"
+
+          if [ "${{ steps.pr_gate.outputs.merge_recommendation }}" = "hard_block" ]; then
+            echo "PR gate hard_block"
+            exit 1
+          fi
+
+          if [ "${{ steps.pr_gate.outputs.exit_code }}" != "0" ]; then
+            echo "PR gate exited non-zero"
+            exit 1
+          fi
