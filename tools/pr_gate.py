@@ -94,6 +94,14 @@ def assess_risk(changed_files: List[str], diff_summary: Dict[str, int], policy: 
     
     return "low"
 
+def detect_blocked_deletions(changed_files):
+    blocked = []
+    for f in changed_files:
+        if f.startswith("tools/") or f.startswith("config/"):
+            blocked.append(f)
+    return blocked
+
+
 def check_syntax() -> str:
     """構文チェック（簡易版）"""
     # 実際にはpython -m py_compile等を実行
@@ -293,6 +301,11 @@ def main():
     
     # リスク判定
     risk_level = assess_risk(changed_files, diff_summary, policy)
+
+    blocked_deletions = detect_blocked_deletions(changed_files)
+    if blocked_deletions:
+        risk_level = "high"
+
     
     # チェック
     checks = {
@@ -320,6 +333,10 @@ def main():
     
     # マージ推奨判定
     merge_recommendation = policy.get("default_merge_recommendation", "manual_approval_required")
+
+    if blocked_deletions:
+        merge_recommendation = "hard_block"
+
     if risk_level == "low" and all(c in ["pass", "unknown"] for c in checks.values()):
         merge_recommendation = "eligible_for_manual_merge_review"
     
@@ -348,7 +365,8 @@ def main():
         "pr_body": pr_body,
         "pr_url": pr_url,
         "create_pr_command": create_pr_command,
-        "manual_review_checklist": manual_review_checklist
+        "manual_review_checklist": manual_review_checklist,
+        "blocked_deletions": blocked_deletions
     }
     
     # PR作成結果を追加
