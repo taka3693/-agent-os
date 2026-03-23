@@ -474,7 +474,7 @@ def main():
 
     # リスク判定
     blocked_deletions = detect_blocked_deletions(args.base, args.branch)
-    state_summary = load_state_summary()
+    state_summary = load_state_summary(args.change_context)
     risk_level = assess_risk(
         changed_files,
         diff_summary,
