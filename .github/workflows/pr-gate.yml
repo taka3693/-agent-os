@@ -79,7 +79,8 @@ jobs:
           p = Path("pr_gate_result.json")
           data = json.loads(p.read_text(encoding="utf-8"))
 
-          with open("${GITHUB_OUTPUT}", "a", encoding="utf-8") as f:
+          import os
+with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as f:
               f.write(f"merge_recommendation={data.get('merge_recommendation','unknown')}\n")
               f.write("comment_body<<EOF\n")
               f.write("<!-- pr-gate-comment -->\n")
