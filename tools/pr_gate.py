@@ -94,6 +94,44 @@ def assess_risk(changed_files: List[str], diff_summary: Dict[str, int], policy: 
     
     return "low"
 
+def detect_blocked_deletions(base: str, branch: str):
+    blocked = []
+
+    # ① committed diff
+    result = subprocess.run(
+        ["git", "diff", "--name-status", f"{base}...{branch}"],
+        capture_output=True,
+        text=True,
+        cwd=ROOT
+    )
+
+    if result.returncode == 0:
+        for line in result.stdout.splitlines():
+            parts = line.strip().split("\t", 1)
+            if len(parts) != 2:
+                continue
+            status, path = parts
+            if status == "D" and (path.startswith("tools/") or path.startswith("config/")):
+                blocked.append(path)
+
+    # ② working tree diff（ここが重要）
+    result2 = subprocess.run(
+        ["git", "status", "--porcelain"],
+        capture_output=True,
+        text=True,
+        cwd=ROOT
+    )
+
+    if result2.returncode == 0:
+        for line in result2.stdout.splitlines():
+            if line.startswith(" D "):
+                path = line[3:].strip()
+                if path.startswith("tools/") or path.startswith("config/"):
+                    blocked.append(path)
+
+    return sorted(set(blocked))
+
+
 def check_syntax() -> str:
     """構文チェック（簡易版）"""
     # 実際にはpython -m py_compile等を実行
@@ -292,7 +330,11 @@ def main():
     diff_summary = get_diff_summary(args.repo, args.branch, args.base)
     
     # リスク判定
-    risk_level = assess_risk(changed_files, diff_summary, policy)
+    blocked_deletions = detect_blocked_deletions(args.base, args.branch)
+    risk_level = assess_risk(
+        changed_files, diff_summary, policy, blocked_deletions
+    )
+
     
     # チェック
     checks = {
@@ -319,9 +361,9 @@ def main():
     )
     
     # マージ推奨判定
-    merge_recommendation = policy.get("default_merge_recommendation", "manual_approval_required")
-    if risk_level == "low" and all(c in ["pass", "unknown"] for c in checks.values()):
-        merge_recommendation = "eligible_for_manual_merge_review"
+    merge_recommendation = decide_merge_recommendation(
+        risk_level, blocked_deletions
+    )
     
     # PR作成（--create-pr指定時）
     pr_result = None
@@ -333,6 +375,12 @@ def main():
         if pr_result.get("pr_created"):
             pr_url = pr_result.get("pr_url", pr_url)
     
+    checklist = build_checklist(
+        risk_level=risk_level,
+        merge_recommendation=merge_recommendation,
+        blocked_deletions=blocked_deletions,
+    )
+
     # 結果まとめ
     result = {
         "ok": True,
@@ -348,7 +396,9 @@ def main():
         "pr_body": pr_body,
         "pr_url": pr_url,
         "create_pr_command": create_pr_command,
-        "manual_review_checklist": manual_review_checklist
+        "manual_review_checklist": manual_review_checklist,
+        "blocked_deletions": blocked_deletions,
+        "checklist": checklist
     }
     
     # PR作成結果を追加
@@ -368,3 +418,92 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+# --- deletion guard design patch ---
+_original_assess_risk = assess_risk
+
+def assess_risk(
+    changed_files: List[str],
+    diff_summary: Dict[str, int],
+    policy: Dict[str, Any],
+    blocked_deletions: List[str] | None = None,
+) -> str:
+    blocked_deletions = blocked_deletions or []
+    if blocked_deletions:
+        return "high"
+    return _original_assess_risk(changed_files, diff_summary, policy)
+
+
+def decide_merge_recommendation(
+    risk_level: str,
+    blocked_deletions: List[str] | None = None,
+) -> str:
+    blocked_deletions = blocked_deletions or []
+
+    if blocked_deletions:
+        return "hard_block"
+
+    if risk_level in {"high", "medium"}:
+        return "manual_approval_required"
+
+    return "merge_allowed"
+
+
+def build_checklist(
+    risk_level: str,
+    merge_recommendation: str,
+    blocked_deletions: List[str] | None = None,
+) -> List[str]:
+    blocked_deletions = blocked_deletions or []
+
+    checklist: List[str] = []
+
+    if blocked_deletions:
+        checklist.append(
+            "Hard Block: protected paths deleted: " + ", ".join(blocked_deletions)
+        )
+
+    if risk_level == "high":
+        checklist.append("High risk change: manual review required")
+
+    if merge_recommendation == "manual_approval_required":
+        checklist.append("Merge requires manual approval")
+
+    if merge_recommendation == "merge_allowed":
+        checklist.append("Safe to merge under current policy")
+
+    return checklist
+
+
+# --- final assess_risk override ---
+def assess_risk(
+    changed_files: List[str],
+    diff_summary: Dict[str, int],
+    policy: Dict[str, Any],
+    blocked_deletions: List[str] | None = None,
+) -> str:
+    blocked_deletions = blocked_deletions or []
+
+    if blocked_deletions:
+        return "high"
+
+    changed_count = diff_summary.get("changed_files", len(changed_files))
+    additions = diff_summary.get("additions", 0)
+    deletions = diff_summary.get("deletions", 0)
+
+    if (
+        changed_count >= policy.get("max_files_changed", 20)
+        or additions >= policy.get("max_additions", 500)
+        or deletions >= policy.get("max_deletions", 200)
+    ):
+        return "high"
+
+    if (
+        changed_count >= policy.get("warn_files_changed", 8)
+        or additions >= policy.get("warn_additions", 150)
+        or deletions >= policy.get("warn_deletions", 50)
+    ):
+        return "medium"
+
+    return "low"
