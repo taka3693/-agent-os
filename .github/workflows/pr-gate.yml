@@ -181,3 +181,5 @@ jobs:
             echo "PR gate exited non-zero"
             exit 1
           fi
+
+# critical-zone live validation
