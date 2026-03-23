@@ -76,6 +76,51 @@ def get_diff_summary(repo: str, branch: str, base: str) -> Dict[str, int]:
     
     return summary
 
+
+
+def detect_blocked_deletions(base: str, branch: str, policy: Dict[str, Any]):
+    blocked = []
+
+    # committed diff
+    result = subprocess.run(
+        ["git", "diff", "--name-status", f"{base}...{branch}"],
+        capture_output=True,
+        text=True,
+        cwd=ROOT
+    )
+
+    if result.returncode == 0:
+        for line in result.stdout.splitlines():
+            parts = line.strip().split("\t", 1)
+            if len(parts) != 2:
+                continue
+            status, path = parts
+            if status in ("D","R","RM","RD") and any(
+                fnmatch.fnmatch(path, pat) or path.startswith(pat.rstrip("*"))
+                for pat in policy.get("protected_paths", [])
+            ):
+                blocked.append(path)
+
+    # working tree
+    result2 = subprocess.run(
+        ["git", "status", "--porcelain"],
+        capture_output=True,
+        text=True,
+        cwd=ROOT
+    )
+
+    if result2.returncode == 0:
+        for line in result2.stdout.splitlines():
+            if line.startswith(" D "):
+                path = line[3:].strip()
+                if any(
+                    fnmatch.fnmatch(path, pat) or path.startswith(pat.rstrip("*"))
+                    for pat in policy.get("protected_paths", [])
+                ):
+                    blocked.append(path)
+
+    return sorted(set(blocked))
+
 def check_syntax() -> str:
     """構文チェック"""
     result = subprocess.run(
@@ -296,7 +341,7 @@ def main():
     diff_summary = get_diff_summary(args.repo, args.branch, args.base)
     
     # リスク判定
-    blocked_deletions = detect_blocked_deletions(args.base, args.branch)
+    blocked_deletions = detect_blocked_deletions(args.base, args.branch, policy)
     risk_level = assess_risk(
         changed_files, diff_summary, policy, blocked_deletions
     )
