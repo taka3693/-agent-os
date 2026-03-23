@@ -33,7 +33,12 @@ def _latest_task(change_context: str = "") -> Optional[Dict[str, Any]]:
 
     # 1. query match 優先
     ctx = (change_context or "").lower().strip()
-    tokens = [t for t in re.split(r"[^a-zA-Z0-9_\-]+", ctx) if len(t) >= 3]
+    raw_tokens = [t for t in re.split(r"[^a-zA-Z0-9_\-]+", ctx) if len(t) >= 3]
+    generic_tokens = {
+        "router", "task", "tasks", "state", "skill", "skills",
+        "autonomous", "main", "branch", "feat", "fix", "pr",
+    }
+    tokens = [t for t in raw_tokens if t not in generic_tokens]
 
     best_obj = None
     best_score = 0
@@ -49,27 +54,63 @@ def _latest_task(change_context: str = "") -> Optional[Dict[str, Any]]:
             work_summary = str(obj.get("work_summary", "")).lower()
             branch = str(obj.get("branch", "")).lower()
             files_touched = " ".join(str(x).lower() for x in (obj.get("files_touched") or []))
+            task_id = str(obj.get("task_id", "")).lower()
+            selected_skill = str(obj.get("selected_skill", "")).lower()
+            selected_skills = " ".join(str(x).lower() for x in (obj.get("selected_skills") or []))
+            planning_mode = str(obj.get("planning_mode", "")).lower()
 
-            haystack = " ".join([
-                query,
-                change_context,
-                work_summary,
-                branch,
-                files_touched,
-                str(obj.get("task_id", "")).lower(),
-                str(obj.get("selected_skill", "")).lower(),
-                " ".join(str(x).lower() for x in (obj.get("selected_skills") or [])),
-                str(obj.get("planning_mode", "")).lower(),
-            ]).strip()
+            fields = {
+                "query": query,
+                "change_context": change_context,
+                "work_summary": work_summary,
+                "branch": branch,
+                "files_touched": files_touched,
+                "task_id": task_id,
+                "selected_skill": selected_skill,
+                "selected_skills": selected_skills,
+                "planning_mode": planning_mode,
+            }
 
-            if not haystack:
+            if not any(fields.values()):
                 continue
 
             score = 0
-            if query and ctx in query:
-                score = 100
-            elif tokens:
-                score = sum(1 for t in tokens if t in haystack)
+            exact_hit = False
+
+            exact_weights = {
+                "query": 100,
+                "change_context": 90,
+                "work_summary": 70,
+            }
+            token_weights = {
+                "query": 4,
+                "change_context": 4,
+                "work_summary": 3,
+                "branch": 2,
+                "files_touched": 2,
+                "task_id": 1,
+                "selected_skill": 2,
+                "selected_skills": 2,
+                "planning_mode": 1,
+            }
+
+            exact_ctx_allowed = bool(ctx) and len(ctx) >= 6 and ctx not in generic_tokens
+
+            for name, weight in exact_weights.items():
+                value = fields.get(name, "")
+                if value and exact_ctx_allowed and ctx in value:
+                    score = max(score, weight)
+                    exact_hit = True
+
+            if not exact_hit and tokens:
+                for t in tokens:
+                    matched_weights = []
+                    for name, weight in token_weights.items():
+                        value = fields.get(name, "")
+                        if value and t in value:
+                            matched_weights.append(weight)
+                    if matched_weights:
+                        score += max(matched_weights)
 
             if score > best_score:
                 best_score = score
@@ -78,7 +119,12 @@ def _latest_task(change_context: str = "") -> Optional[Dict[str, Any]]:
 
         if best_obj and best_score > 0:
             best_obj["_match_mode"] = "query_match"
-            best_obj["_match_confidence"] = "high" if best_score >= 2 or best_score == 100 else "medium"
+            if best_score >= 8 or best_score >= 50:
+                best_obj["_match_confidence"] = "high"
+            elif best_score >= 4:
+                best_obj["_match_confidence"] = "medium"
+            else:
+                best_obj["_match_confidence"] = "low"
             return _normalize_task(best_obj)
 
     # 2. fallback: 最新
@@ -89,7 +135,12 @@ def _latest_task(change_context: str = "") -> Optional[Dict[str, Any]]:
         if any(k in obj for k in ("task_id", "status", "selected_skill")):
             obj["_source_file"] = str(p.relative_to(ROOT))
             obj["_match_mode"] = "latest_fallback"
-            obj["_match_confidence"] = "medium" if ctx else "low"
+            if not ctx or not tokens:
+                obj["_match_confidence"] = "low"
+            elif len(ctx) >= 12:
+                obj["_match_confidence"] = "medium"
+            else:
+                obj["_match_confidence"] = "low"
             return _normalize_task(obj)
 
     return None
