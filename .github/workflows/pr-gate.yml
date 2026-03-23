@@ -1,0 +1,28 @@
+name: pr-gate
+
+on:
+  pull_request:
+
+jobs:
+  pr-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout PR head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Run PR gate tests
+        run: |
+          python -m pip install --upgrade pip pytest
+          pytest -q tests/test_pr_gate_deletion_guard.py
+
+      - name: Run PR gate
+        run: |
+          python tools/pr_gate.py --repo ${{ github.repository }} --branch ${{ github.head_ref }} --base main --strict
