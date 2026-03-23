@@ -557,6 +557,21 @@ def main():
         if pr_result.get("pr_created"):
             pr_url = pr_result.get("pr_url", pr_url)
 
+    state_warnings = []
+    state_requirements = []
+
+    task_status = state_summary.get("task_status")
+    if task_status and task_status != "completed":
+        state_warnings.append("task_status_not_completed")
+        state_requirements.append("state_review")
+
+    if state_summary.get("state_match") is False:
+        state_warnings.append("state_mismatch")
+        state_requirements.append("state_review")
+
+    warnings.extend(x for x in state_warnings if x not in warnings)
+    approval_requirements.extend(x for x in state_requirements if x not in approval_requirements)
+
     checklist = build_checklist(
         risk_level=risk_level,
         merge_recommendation=merge_recommendation,
