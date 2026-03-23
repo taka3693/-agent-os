@@ -125,6 +125,23 @@ jobs:
               return;
             }
 
+            const ALLOWED_ACTORS = new Set([
+              'taka3693'
+            ]);
+
+            if (!ALLOWED_ACTORS.has(authorLogin)) {
+              core.setFailed(
+                [
+                  'bootstrap-guard: workflow change detected from disallowed actor',
+                  `author: ${authorLogin}`,
+                  'require PR author login to be explicitly allowlisted',
+                  ...touchedWorkflows.map(f => `- ${f.filename} [${f.status}]`)
+                ].join('\n')
+              );
+              return;
+            }
+
+
             if (protectedMutations.length > 0) {
               core.notice(
                 [
