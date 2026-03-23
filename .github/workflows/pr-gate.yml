@@ -107,6 +107,11 @@ jobs:
         with:
           script: |
             const body = `${{ steps.pr_gate.outputs.comment_body }}`;
+
+if (!body || body.trim() === "") {
+  console.log("skip comment: empty body");
+  return;
+}
             const marker = "<!-- pr-gate-comment -->";
 
             const { data: comments } = await github.rest.issues.listComments({
