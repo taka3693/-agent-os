@@ -163,7 +163,7 @@ def build_checklist(
 
     return checklist
 
-def detect_blocked_deletions(base: str, branch: str):
+def detect_blocked_deletions(base: str, branch: str, policy: Dict[str, Any]):
     blocked = []
 
     # ① committed diff
@@ -180,7 +180,10 @@ def detect_blocked_deletions(base: str, branch: str):
             if len(parts) != 2:
                 continue
             status, path = parts
-            if status in ("D","R","RM","RD") and any(fnmatch.fnmatch(path, p) or path.startswith(p.rstrip('*')) for p in policy.get("protected_paths", [])):
+            if status in ("D", "R", "RM", "RD") and any(
+                fnmatch.fnmatch(path, pat) or path.startswith(pat.rstrip("*"))
+                for pat in policy.get("protected_paths", [])
+            ):
                 blocked.append(path)
 
     # ② working tree diff（ここが重要）
@@ -195,7 +198,10 @@ def detect_blocked_deletions(base: str, branch: str):
         for line in result2.stdout.splitlines():
             if line.startswith(" D "):
                 path = line[3:].strip()
-                if path.startswith("tools/") or path.startswith("config/"):
+                if any(
+                    fnmatch.fnmatch(path, pat) or path.startswith(pat.rstrip("*"))
+                    for pat in policy.get("protected_paths", [])
+                ):
                     blocked.append(path)
 
     return sorted(set(blocked))
@@ -400,7 +406,7 @@ def main():
     diff_summary = get_diff_summary(args.repo, args.branch, args.base)
     
     # リスク判定
-    blocked_deletions = detect_blocked_deletions(args.base, args.branch)
+    blocked_deletions = detect_blocked_deletions(args.base, args.branch, policy)
     risk_level = assess_risk(
         changed_files, diff_summary, policy, blocked_deletions
     )
