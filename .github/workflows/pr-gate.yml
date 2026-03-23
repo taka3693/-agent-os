@@ -28,5 +28,7 @@ jobs:
           pytest -q tests/test_pr_gate_deletion_guard.py
 
       - name: Run PR gate
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           python tools/pr_gate.py --repo ${{ github.repository }} --branch ${{ github.head_ref }} --base main --strict

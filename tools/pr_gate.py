@@ -11,6 +11,7 @@ PR Gate - PR作成前のリスク判定と承認待ち状態管理
 - PR作成実行（--create-pr指定時）
 """
 import sys
+import os
 import json
 import subprocess
 import fnmatch
@@ -34,6 +35,75 @@ def load_policy() -> Dict[str, Any]:
             "default_merge_recommendation": "manual_approval_required"
         }
     return json.loads(CONFIG_PATH.read_text())
+
+
+
+def get_pr_number() -> int | None:
+    v = os.getenv("PR_NUMBER")
+    if not v:
+        return None
+    try:
+        return int(v)
+    except ValueError:
+        return None
+
+def get_changed_files_from_pr_api(repo: str, pr_number: int) -> List[str]:
+    files: List[str] = []
+    page = 1
+    while True:
+        result = subprocess.run(
+            [
+                "gh", "api",
+                "-H", "Accept: application/vnd.github+json",
+                "-H", "X-GitHub-Api-Version: 2026-03-10",
+                f"/repos/{repo}/pulls/{pr_number}/files",
+                "-f", f"per_page=100",
+                "-f", f"page={page}",
+            ],
+            capture_output=True,
+            text=True,
+            cwd=ROOT,
+        )
+        if result.returncode != 0:
+            return []
+        chunk = json.loads(result.stdout)
+        if not chunk:
+            break
+        files.extend(item["filename"] for item in chunk if item.get("filename"))
+        if len(chunk) < 100:
+            break
+        page += 1
+    return files
+
+def get_diff_summary_from_pr_api(repo: str, pr_number: int) -> Dict[str, int]:
+    summary = {"files": 0, "additions": 0, "deletions": 0}
+    page = 1
+    while True:
+        result = subprocess.run(
+            [
+                "gh", "api",
+                "-H", "Accept: application/vnd.github+json",
+                "-H", "X-GitHub-Api-Version: 2026-03-10",
+                f"/repos/{repo}/pulls/{pr_number}/files",
+                "-f", f"per_page=100",
+                "-f", f"page={page}",
+            ],
+            capture_output=True,
+            text=True,
+            cwd=ROOT,
+        )
+        if result.returncode != 0:
+            return summary
+        chunk = json.loads(result.stdout)
+        if not chunk:
+            break
+        summary["files"] += len(chunk)
+        summary["additions"] += sum(int(item.get("additions", 0)) for item in chunk)
+        summary["deletions"] += sum(int(item.get("deletions", 0)) for item in chunk)
+        if len(chunk) < 100:
+            break
+        page += 1
+    return summary
 
 def get_changed_files(repo: str, branch: str, base: str) -> List[str]:
     """変更ファイル一覧を取得"""
