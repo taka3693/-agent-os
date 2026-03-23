@@ -121,6 +121,47 @@ def assess_risk(
 
     return "low"
 
+
+
+def decide_merge_recommendation(
+    risk_level: str,
+    blocked_deletions: list[str] | None = None,
+) -> str:
+    blocked_deletions = blocked_deletions or []
+
+    if blocked_deletions:
+        return "hard_block"
+
+    if risk_level in {"high", "medium"}:
+        return "manual_approval_required"
+
+    return "merge_allowed"
+
+def build_checklist(
+    risk_level: str,
+    merge_recommendation: str,
+    blocked_deletions: list[str] | None = None,
+) -> list[str]:
+    blocked_deletions = blocked_deletions or []
+
+    checklist: list[str] = []
+
+    if blocked_deletions:
+        checklist.append(
+            "Hard Block: protected paths deleted: " + ", ".join(blocked_deletions)
+        )
+
+    if risk_level == "high":
+        checklist.append("High risk change: manual review required")
+
+    if merge_recommendation == "manual_approval_required":
+        checklist.append("Merge requires manual approval")
+
+    if merge_recommendation == "merge_allowed":
+        checklist.append("Safe to merge under current policy")
+
+    return checklist
+
 def detect_blocked_deletions(base: str, branch: str):
     blocked = []
 
@@ -454,42 +495,4 @@ if __name__ == "__main__":
 
 
 
-def decide_merge_recommendation(
-    risk_level: str,
-    blocked_deletions: list[str] | None = None,
-) -> str:
-    blocked_deletions = blocked_deletions or []
 
-    if blocked_deletions:
-        return "hard_block"
-
-    if risk_level in {"high", "medium"}:
-        return "manual_approval_required"
-
-    return "merge_allowed"
-
-
-def build_checklist(
-    risk_level: str,
-    merge_recommendation: str,
-    blocked_deletions: list[str] | None = None,
-) -> list[str]:
-    blocked_deletions = blocked_deletions or []
-
-    checklist: list[str] = []
-
-    if blocked_deletions:
-        checklist.append(
-            "Hard Block: protected paths deleted: " + ", ".join(blocked_deletions)
-        )
-
-    if risk_level == "high":
-        checklist.append("High risk change: manual review required")
-
-    if merge_recommendation == "manual_approval_required":
-        checklist.append("Merge requires manual approval")
-
-    if merge_recommendation == "merge_allowed":
-        checklist.append("Safe to merge under current policy")
-
-    return checklist
