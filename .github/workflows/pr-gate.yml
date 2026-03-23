@@ -109,6 +109,37 @@ jobs:
           if data.get("approval_requirements"):
               lines.append(f"- approval_requirements: `{', '.join(data['approval_requirements'])}`")
 
+          state_summary = data.get("state_summary") or {}
+          if state_summary:
+              lines.append("")
+              lines.append("### Agent-OS State")
+              lines.append(f"- task_id: `{state_summary.get('task_id', 'unknown')}`")
+              lines.append(f"- task_status: **{state_summary.get('task_status', 'unknown')}**")
+              lines.append(f"- selected_skill: `{state_summary.get('selected_skill', 'unknown')}`")
+
+              selected_skills = state_summary.get("selected_skills")
+              if isinstance(selected_skills, list) and selected_skills:
+                  lines.append(f"- selected_skills: `{', '.join(selected_skills)}`")
+
+              planning_mode = state_summary.get("planning_mode")
+              if planning_mode is not None:
+                  lines.append(f"- planning_mode: `{planning_mode}`")
+
+              chain_length = state_summary.get("chain_length")
+              if chain_length is not None:
+                  lines.append(f"- chain_length: `{chain_length}`")
+
+              lines.append(f"- state_match: **{state_summary.get('state_match', 'unknown')}**")
+
+              reasons = state_summary.get("reasons") or []
+              if reasons:
+                  lines.append(f"- reasons: `{', '.join(reasons)}`")
+
+              if state_summary.get("task_status") not in (None, "completed"):
+                  lines.append("- state_gate: `task_status is not completed -> manual approval required`")
+              elif state_summary.get("state_match") is False:
+                  lines.append("- state_gate: `state mismatch detected -> manual approval required`")
+
           checklist = data.get("checklist", [])
           if checklist:
               lines.append("")
