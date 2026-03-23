@@ -1,0 +1,157 @@
+name: pr-gate
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  pr-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout PR head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Fetch base branch
+        run: |
+          git fetch origin ${{ github.base_ref }}
+
+      - name: Install test deps
+        run: |
+          python -m pip install --upgrade pip pytest
+
+      - name: Run syntax check
+        id: syntax_check
+        continue-on-error: true
+        run: |
+          python -m py_compile tools/pr_gate.py
+
+      - name: Run PR gate tests
+        id: pr_gate_tests
+        continue-on-error: true
+        run: |
+          pytest -q tests/test_pr_gate_deletion_guard.py tests/test_pr_gate_safe_merge.py
+
+      - name: Run PR gate
+        id: pr_gate
+        continue-on-error: true
+        run: |
+          TESTS_STATUS="pass"
+          if [ "${{ steps.pr_gate_tests.outcome }}" != "success" ]; then
+            TESTS_STATUS="fail"
+          fi
+
+          SYNTAX_STATUS="pass"
+          if [ "${{ steps.syntax_check.outcome }}" != "success" ]; then
+            SYNTAX_STATUS="fail"
+          fi
+
+          set +e
+          python tools/pr_gate.py \
+            --repo "${{ github.repository }}" \
+            --branch "${{ github.head_ref }}" \
+            --base "${{ github.event.pull_request.base.ref }}" \
+            --strict \
+            --syntax "$SYNTAX_STATUS" \
+            --tests "$TESTS_STATUS" \
+            --freshness unknown \
+            --change-context "${{ github.event.pull_request.title }} ${{ github.event.pull_request.body }}" \
+            > pr_gate_result.json
+          PR_GATE_EXIT=$?
+          set -e
+
+          echo "exit_code=$PR_GATE_EXIT" >> "$GITHUB_OUTPUT"
+
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          p = Path("pr_gate_result.json")
+          data = json.loads(p.read_text(encoding="utf-8"))
+
+          with open("${GITHUB_OUTPUT}", "a", encoding="utf-8") as f:
+              f.write(f"merge_recommendation={data.get('merge_recommendation','unknown')}\n")
+              f.write("comment_body<<EOF\n")
+              f.write("<!-- pr-gate-comment -->\n")
+              f.write("## PR Gate Result\n\n")
+              f.write(f"- risk_level: **{data.get('risk_level','unknown')}**\n")
+              f.write(f"- merge_recommendation: **{data.get('merge_recommendation','unknown')}**\n")
+              f.write(f"- checks: `{json.dumps(data.get('checks', {}), ensure_ascii=False)}`\n")
+              if data.get("blocked_deletions"):
+                  f.write(f"- blocked_deletions: `{', '.join(data['blocked_deletions'])}`\n")
+              if data.get("warnings"):
+                  f.write(f"- warnings: `{', '.join(data['warnings'])}`\n")
+              if data.get("approval_requirements"):
+                  f.write(f"- approval_requirements: `{', '.join(data['approval_requirements'])}`\n")
+              checklist = data.get("checklist", [])
+              if checklist:
+                  f.write("\n### Checklist\n")
+                  for item in checklist:
+                      f.write(f"- {item}\n")
+              f.write("EOF\n")
+          PY
+
+      - name: Comment PR with PR gate result
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const body = `${{ steps.pr_gate.outputs.comment_body }}`;
+            const marker = "<!-- pr-gate-comment -->";
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const existing = comments.find(c => c.body && c.body.includes(marker));
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body
+              });
+            }
+
+      - name: Upload PR gate result artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr-gate-result
+          path: pr_gate_result.json
+
+      - name: Enforce PR gate result
+        if: always()
+        run: |
+          echo "merge_recommendation=${{ steps.pr_gate.outputs.merge_recommendation }}"
+          echo "exit_code=${{ steps.pr_gate.outputs.exit_code }}"
+
+          if [ "${{ steps.pr_gate.outputs.merge_recommendation }}" = "hard_block" ]; then
+            echo "PR gate hard_block"
+            exit 1
+          fi
+
+          if [ "${{ steps.pr_gate.outputs.exit_code }}" != "0" ]; then
+            echo "PR gate exited non-zero"
+            exit 1
+          fi
