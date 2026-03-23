@@ -2,7 +2,7 @@ name: pr-gate-bootstrap
 
 on:
   pull_request_target:
-    types: [opened, synchronize, reopened]
+    types: [opened, synchronize, reopened, edited, ready_for_review, labeled, unlabeled]
 
 permissions:
   contents: read
@@ -10,6 +10,128 @@ permissions:
 
 jobs:
   bootstrap-guard:
+    name: bootstrap-guard
     runs-on: ubuntu-latest
+
     steps:
-      - run: echo "temporary unlock mode"
+      - name: Detect workflow tampering from PR metadata only
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const pull_number = context.payload.pull_request.number;
+
+            const WORKFLOW_APPROVAL_LABEL = 'workflow-approved';
+            const PROTECTED_WORKFLOWS = new Set([
+              '.github/workflows/pr-gate.yml',
+              '.github/workflows/pr-gate-bootstrap.yml'
+            ]);
+            const TRUSTED_ASSOCIATIONS = new Set([
+              'OWNER',
+              'MEMBER',
+              'COLLABORATOR'
+            ]);
+
+            const files = await github.paginate(
+              github.rest.pulls.listFiles,
+              { owner, repo, pull_number, per_page: 100 }
+            );
+
+            const pr = await github.rest.pulls.get({
+              owner,
+              repo,
+              pull_number
+            });
+
+            const touchedWorkflows = files.filter(f =>
+              f.filename.startsWith('.github/workflows/')
+            );
+
+            const protectedTouches = touchedWorkflows.filter(f =>
+              PROTECTED_WORKFLOWS.has(f.filename)
+            );
+
+            const protectedDeletions = protectedTouches.filter(f =>
+              f.status === 'removed'
+            );
+
+            const protectedMutations = protectedTouches.filter(f =>
+              ['added', 'modified', 'renamed', 'removed'].includes(f.status)
+            );
+
+            const labels = (pr.data.labels || []).map(l => l.name);
+            const hasWorkflowApprovalLabel = labels.includes(WORKFLOW_APPROVAL_LABEL);
+
+            const authorAssociation = pr.data.author_association || 'NONE';
+            const authorLogin = pr.data.user?.login || 'unknown';
+            const isTrustedAuthor = TRUSTED_ASSOCIATIONS.has(authorAssociation);
+
+            const summaryLines = [];
+            summaryLines.push(`PR #${pull_number}`);
+            summaryLines.push(`workflow files touched: ${touchedWorkflows.length}`);
+            summaryLines.push(`approval label present: ${hasWorkflowApprovalLabel}`);
+            summaryLines.push(`author: ${authorLogin}`);
+            summaryLines.push(`author association: ${authorAssociation}`);
+            summaryLines.push(`trusted author: ${isTrustedAuthor}`);
+            summaryLines.push('');
+            if (touchedWorkflows.length > 0) {
+              summaryLines.push('Touched workflow files:');
+              for (const f of touchedWorkflows) {
+                summaryLines.push(`- ${f.filename} [${f.status}]`);
+              }
+            }
+
+            await core.summary
+              .addHeading('Bootstrap Guard Result')
+              .addCodeBlock(summaryLines.join('\n'), 'text')
+              .write();
+
+            if (protectedDeletions.length > 0) {
+              core.setFailed(
+                [
+                  'bootstrap-guard: protected workflow deletion detected',
+                  ...protectedDeletions.map(f => `- ${f.filename} [${f.status}]`)
+                ].join('\n')
+              );
+              return;
+            }
+
+            if (touchedWorkflows.length === 0) {
+              core.info('bootstrap-guard: no workflow tampering detected');
+              return;
+            }
+
+            if (!hasWorkflowApprovalLabel) {
+              core.setFailed(
+                [
+                  'bootstrap-guard: workflow change detected without approval label',
+                  `required label: ${WORKFLOW_APPROVAL_LABEL}`,
+                  ...touchedWorkflows.map(f => `- ${f.filename} [${f.status}]`)
+                ].join('\n')
+              );
+              return;
+            }
+
+            if (!isTrustedAuthor) {
+              core.setFailed(
+                [
+                  'bootstrap-guard: workflow change detected from untrusted author',
+                  `author association: ${authorAssociation}`,
+                  'require PR author to be OWNER/MEMBER/COLLABORATOR',
+                  ...touchedWorkflows.map(f => `- ${f.filename} [${f.status}]`)
+                ].join('\n')
+              );
+              return;
+            }
+
+            if (protectedMutations.length > 0) {
+              core.notice(
+                [
+                  'bootstrap-guard: protected workflow mutation allowed by strict label + trusted author',
+                  ...protectedMutations.map(f => `- ${f.filename} [${f.status}]`)
+                ].join('\n')
+              );
+            } else {
+              core.notice('bootstrap-guard: workflow change allowed by strict label + trusted author');
+            }
