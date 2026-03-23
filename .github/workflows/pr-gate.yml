@@ -29,4 +29,12 @@ jobs:
 
       - name: Run PR gate
         run: |
-          python tools/pr_gate.py             --repo "${{ github.repository }}"             --branch "${{ github.head_ref }}"             --base "${{ github.event.pull_request.base.ref }}"             --strict             --syntax pass             --tests pass             --freshness unknown             --change-context "${{ github.event.pull_request.title }} ${{ github.event.pull_request.body }}"
+          python tools/pr_gate.py \
+            --repo "${{ github.repository }}" \
+            --branch "${{ github.head_ref }}" \
+            --base "${{ github.event.pull_request.base.ref }}" \
+            --strict \
+            --syntax pass \
+            --tests pass \
+            --freshness unknown \
+            --change-context "${{ github.event.pull_request.title }} ${{ github.event.pull_request.body }}"
