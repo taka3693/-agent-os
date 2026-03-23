@@ -495,7 +495,11 @@ def main():
     approval_requirements = []
 
     protected_paths = tuple(policy.get("protected_paths", []))
-    if protected_paths and any(f.startswith(protected_paths) for f in changed_files):
+    critical_review_paths = tuple(sorted(set(list(policy.get("protected_paths", [])) + [
+        ".github/workflows/",
+        "config/",
+    ])))
+    if critical_review_paths and any(f.startswith(critical_review_paths) for f in changed_files):
         approval_requirements.append("maintainer_review")
 
     if deleted_files and not has_justification:
