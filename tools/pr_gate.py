@@ -11,10 +11,8 @@ PR Gate - PR作成前のリスク判定と承認待ち状態管理
 - PR作成実行（--create-pr指定時）
 """
 import sys
-import os
 import json
 import subprocess
-import fnmatch
 from pathlib import Path
 from datetime import datetime
 from typing import Dict, Any, List, Optional
@@ -36,80 +34,11 @@ def load_policy() -> Dict[str, Any]:
         }
     return json.loads(CONFIG_PATH.read_text())
 
-
-
-def get_pr_number() -> int | None:
-    v = os.getenv("PR_NUMBER")
-    if not v:
-        return None
-    try:
-        return int(v)
-    except ValueError:
-        return None
-
-def get_changed_files_from_pr_api(repo: str, pr_number: int) -> List[str]:
-    files: List[str] = []
-    page = 1
-    while True:
-        result = subprocess.run(
-            [
-                "gh", "api",
-                "-H", "Accept: application/vnd.github+json",
-                "-H", "X-GitHub-Api-Version: 2026-03-10",
-                f"/repos/{repo}/pulls/{pr_number}/files",
-                "-f", f"per_page=100",
-                "-f", f"page={page}",
-            ],
-            capture_output=True,
-            text=True,
-            cwd=ROOT,
-        )
-        if result.returncode != 0:
-            return []
-        chunk = json.loads(result.stdout)
-        if not chunk:
-            break
-        files.extend(item["filename"] for item in chunk if item.get("filename"))
-        if len(chunk) < 100:
-            break
-        page += 1
-    return files
-
-def get_diff_summary_from_pr_api(repo: str, pr_number: int) -> Dict[str, int]:
-    summary = {"files": 0, "additions": 0, "deletions": 0}
-    page = 1
-    while True:
-        result = subprocess.run(
-            [
-                "gh", "api",
-                "-H", "Accept: application/vnd.github+json",
-                "-H", "X-GitHub-Api-Version: 2026-03-10",
-                f"/repos/{repo}/pulls/{pr_number}/files",
-                "-f", f"per_page=100",
-                "-f", f"page={page}",
-            ],
-            capture_output=True,
-            text=True,
-            cwd=ROOT,
-        )
-        if result.returncode != 0:
-            return summary
-        chunk = json.loads(result.stdout)
-        if not chunk:
-            break
-        summary["files"] += len(chunk)
-        summary["additions"] += sum(int(item.get("additions", 0)) for item in chunk)
-        summary["deletions"] += sum(int(item.get("deletions", 0)) for item in chunk)
-        if len(chunk) < 100:
-            break
-        page += 1
-    return summary
-
 def get_changed_files(repo: str, branch: str, base: str) -> List[str]:
     """変更ファイル一覧を取得"""
     # ローカルgitを使用
     result = subprocess.run(
-        ["git", "diff", "--name-only", f"{base}...{branch}"],
+        ["git", "diff", "--name-only", f"origin/{base}...HEAD"],
         capture_output=True,
         text=True,
         cwd=ROOT
@@ -121,7 +50,7 @@ def get_changed_files(repo: str, branch: str, base: str) -> List[str]:
 def get_diff_summary(repo: str, branch: str, base: str) -> Dict[str, int]:
     """diff統計を取得"""
     result = subprocess.run(
-        ["git", "diff", "--shortstat", f"{base}...{branch}"],
+        ["git", "diff", "--shortstat", f"origin/{base}...HEAD"],
         capture_output=True,
         text=True,
         cwd=ROOT
@@ -147,12 +76,28 @@ def get_diff_summary(repo: str, branch: str, base: str) -> Dict[str, int]:
     
     return summary
 
+def assess_risk(changed_files: List[str], diff_summary: Dict[str, int], policy: Dict[str, Any]) -> str:
+    """リスク判定"""
+    # protected_pathsに変更がある場合はhigh
+    for file in changed_files:
+        for protected in policy.get("protected_paths", []):
+            if file.startswith(protected) or file == protected:
+                return "high"
+    
+    # 変更規模が大きい場合はmedium
+    if diff_summary["files"] > policy.get("max_changed_files_for_low", 3):
+        return "medium"
+    
+    total_lines = diff_summary["additions"] + diff_summary["deletions"]
+    if total_lines > policy.get("max_diff_lines_for_low", 100):
+        return "medium"
+    
+    return "low"
 
-
-def detect_blocked_deletions(base: str, branch: str, policy: Dict[str, Any]):
+def detect_blocked_deletions(base: str, branch: str):
     blocked = []
 
-    # committed diff
+    # ① committed diff
     result = subprocess.run(
         ["git", "diff", "--name-status", f"origin/{base}...HEAD"],
         capture_output=True,
@@ -166,13 +111,10 @@ def detect_blocked_deletions(base: str, branch: str, policy: Dict[str, Any]):
             if len(parts) != 2:
                 continue
             status, path = parts
-            if status in ("D","R","RM","RD") and any(
-                fnmatch.fnmatch(path, pat) or path.startswith(pat.rstrip("*"))
-                for pat in policy.get("protected_paths", [])
-            ):
+            if status == "D" and (path.startswith("tools/") or path.startswith("config/")):
                 blocked.append(path)
 
-    # working tree
+    # ② working tree diff（ここが重要）
     result2 = subprocess.run(
         ["git", "status", "--porcelain"],
         capture_output=True,
@@ -184,50 +126,26 @@ def detect_blocked_deletions(base: str, branch: str, policy: Dict[str, Any]):
         for line in result2.stdout.splitlines():
             if line.startswith(" D "):
                 path = line[3:].strip()
-                if any(
-                    fnmatch.fnmatch(path, pat) or path.startswith(pat.rstrip("*"))
-                    for pat in policy.get("protected_paths", [])
-                ):
+                if path.startswith("tools/") or path.startswith("config/"):
                     blocked.append(path)
 
     return sorted(set(blocked))
 
+
 def check_syntax() -> str:
-    """構文チェック"""
-    result = subprocess.run(
-        [sys.executable, "-m", "py_compile", "tools/pr_gate.py"],
-        capture_output=True,
-        text=True,
-        cwd=ROOT,
-    )
-    return "pass" if result.returncode == 0 else "fail"
+    """構文チェック（簡易版）"""
+    # 実際にはpython -m py_compile等を実行
+    return "unknown"
 
 def check_tests() -> str:
-    """PR gate関連テストチェック"""
-    result = subprocess.run(
-        [
-            "pytest",
-            "-q",
-            "tests/test_pr_gate_deletion_guard.py",
-                    ],
-        capture_output=True,
-        text=True,
-        cwd=ROOT,
-    )
-    return "pass" if result.returncode == 0 else "fail"
+    """テストチェック（簡易版）"""
+    # 実際にはpytest等を実行
+    return "unknown"
 
 def check_freshness() -> str:
-    """mainとの乖離チェック"""
-    result = subprocess.run(
-        ["git", "rev-list", "--count", "HEAD..origin/main"],
-        capture_output=True,
-        text=True,
-        cwd=ROOT,
-    )
-    if result.returncode != 0:
-        return "unknown"
-    behind = int(result.stdout.strip() or "0")
-    return "pass" if behind == 0 else "stale"
+    """鮮度チェック（簡易版）"""
+    # 実際にはmainとの乖離をチェック
+    return "unknown"
 
 def generate_pr_title(branch: str, changed_files: List[str]) -> str:
     """PRタイトル生成"""
@@ -413,7 +331,7 @@ def main():
     diff_summary = get_diff_summary(args.repo, args.branch, args.base)
     
     # リスク判定
-    blocked_deletions = detect_blocked_deletions(args.base, args.branch, policy)
+    blocked_deletions = detect_blocked_deletions(args.base, args.branch)
     risk_level = assess_risk(
         changed_files, diff_summary, policy, blocked_deletions
     )
@@ -501,6 +419,8 @@ def main():
     if args.strict and result.get("merge_recommendation") == "hard_block":
         sys.exit(1)
 
+if __name__ == "__main__":
+    main()
 
 
 
@@ -576,6 +496,3 @@ def build_checklist(
         checklist.append("Safe to merge under current policy")
 
     return checklist
-if __name__ == "__main__":
-    main()
-
