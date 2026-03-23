@@ -23,4 +23,4 @@ jobs:
 
       - name: Run PR gate in strict mode
         run: |
-          python tools/pr_gate.py --base main --strict
+          python tools/pr_gate.py --repo ${{ github.repository }} --branch ${{ github.head_ref }} --base main --strict
