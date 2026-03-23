@@ -1,0 +1,25 @@
+{
+  "protected_paths": [
+    "tools/entrypoint.py",
+    "tools/guard*.py",
+    "tools/apply*.py",
+    "tools/scheduler*.py",
+    "runner/",
+    "bridge/",
+    "router/",
+    "execution/"
+  ],
+  "low_risk_paths": [
+    "docs/",
+    "README.md",
+    "AGENTS.md",
+    ".gitignore"
+  ],
+  "max_changed_files_for_low": 3,
+  "max_diff_lines_for_low": 100,
+  "required_checks": [
+    "syntax",
+    "tests"
+  ],
+  "default_merge_recommendation": "manual_approval_required"
+}
