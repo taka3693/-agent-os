@@ -38,7 +38,7 @@ def get_changed_files(repo: str, branch: str, base: str) -> List[str]:
     """変更ファイル一覧を取得"""
     # ローカルgitを使用
     result = subprocess.run(
-        ["git", "diff", "--name-only", f"{base}...{branch}"],
+        [""git", "diff", "origin/main...HEAD"],
         capture_output=True,
         text=True,
         cwd=ROOT
@@ -50,7 +50,7 @@ def get_changed_files(repo: str, branch: str, base: str) -> List[str]:
 def get_diff_summary(repo: str, branch: str, base: str) -> Dict[str, int]:
     """diff統計を取得"""
     result = subprocess.run(
-        ["git", "diff", "--shortstat", f"{base}...{branch}"],
+        [""git", "diff", "origin/main...HEAD"],
         capture_output=True,
         text=True,
         cwd=ROOT
@@ -167,7 +167,7 @@ def detect_blocked_deletions(base: str, branch: str):
 
     # ① committed diff
     result = subprocess.run(
-        ["git", "diff", "--name-status", f"{base}...{branch}"],
+        [""git", "diff", "origin/main...HEAD"],
         capture_output=True,
         text=True,
         cwd=ROOT
