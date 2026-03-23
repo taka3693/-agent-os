@@ -47,6 +47,40 @@ from execution.guard import enforce_guard
 BASE_DIR = Path(__file__).resolve().parents[1]
 
 
+def _safe_git_branch() -> str:
+    try:
+        out = subprocess.check_output(
+            ["git", "branch", "--show-current"],
+            text=True,
+            stderr=subprocess.DEVNULL,
+        ).strip()
+        return out or "unknown"
+    except Exception:
+        return "unknown"
+
+
+def _safe_git_changed_files(base: str = "main", limit: int = 50) -> list[str]:
+    try:
+        out = subprocess.check_output(
+            ["git", "diff", "--name-only", f"{base}...HEAD"],
+            text=True,
+            stderr=subprocess.DEVNULL,
+        )
+        return [x.strip() for x in out.splitlines() if x.strip()][:limit]
+    except Exception:
+        return []
+
+
+def _build_work_summary(query: str, selected_skill: str) -> str:
+    parts = []
+    if query:
+        parts.append(query)
+    if selected_skill:
+        parts.append(f"skill={selected_skill}")
+    return " | ".join(parts)
+
+
+
 def _build_local_router_out(query: str):
     import json
     import subprocess
@@ -76,6 +110,10 @@ def _build_local_router_out(query: str):
         "selected_skill": selected_skill,
         "route_reason": route_reason,
         "query": q,
+        "change_context": q,
+        "branch": _safe_git_branch(),
+        "files_touched": _safe_git_changed_files(),
+        "work_summary": _build_work_summary(q, selected_skill),
     }, ensure_ascii=False, indent=2), encoding="utf-8")
 
     task_result = {}
@@ -604,6 +642,61 @@ def format_telegram_batch_summary(result):
     return "\n".join(lines)
 
 
+
+def _enrich_task_state(result: Dict[str, Any], query: str = "") -> None:
+    task_path = result.get("task_path")
+    if not task_path:
+        return
+
+    tp = Path(task_path)
+    if not tp.exists():
+        return
+
+    try:
+        obj = json.loads(tp.read_text(encoding="utf-8"))
+    except Exception:
+        return
+
+    def _safe_branch() -> str:
+        try:
+            out = subprocess.check_output(
+                ["git", "branch", "--show-current"],
+                text=True,
+                stderr=subprocess.DEVNULL,
+            ).strip()
+            return out or "unknown"
+        except Exception:
+            return "unknown"
+
+    def _safe_files() -> list[str]:
+        try:
+            out = subprocess.check_output(
+                ["git", "diff", "--name-only", "main...HEAD"],
+                text=True,
+                stderr=subprocess.DEVNULL,
+            )
+            return [x.strip() for x in out.splitlines() if x.strip()][:50]
+        except Exception:
+            return []
+
+    q = str(obj.get("query") or query or "")
+    selected_skill = obj.get("selected_skill")
+
+    obj["change_context"] = obj.get("change_context") or q
+    obj["branch"] = obj.get("branch") or _safe_branch()
+    obj["files_touched"] = obj.get("files_touched") or _safe_files()
+
+    if not obj.get("work_summary"):
+        parts = []
+        if q:
+            parts.append(q)
+        if selected_skill:
+            parts.append(f"skill={selected_skill}")
+        obj["work_summary"] = " | ".join(parts)
+
+    tp.write_text(json.dumps(obj, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
 def run_router_command(query: str, *args, **kwargs):
     tasks_dir = BASE_DIR / "state" / "tasks"
     tasks_dir.mkdir(parents=True, exist_ok=True)
@@ -619,13 +712,16 @@ _old_run_router_command = run_router_command
 def run_router_command(query: str, chat_id: str | int | None = None) -> Dict[str, Any]:
     tasks_dir = BASE_DIR / "state" / "tasks"
     tasks_dir.mkdir(parents=True, exist_ok=True)
-    return lib_run_router_command_with_optional_telegram(
+    result = lib_run_router_command_with_optional_telegram(
         query,
         base_dir=BASE_DIR,
         tasks_dir=tasks_dir,
         chat_id=chat_id,
         send_telegram_message=send_telegram_message,
     )
+    if isinstance(result, dict):
+        _enrich_task_state(result, query=query)
+    return result
 
 def format_reply(result: Dict[str, Any]) -> str:
     if result.get("mode") == "router":
