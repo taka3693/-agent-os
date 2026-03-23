@@ -1,0 +1,97 @@
+name: pr-gate-bootstrap
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened, edited, ready_for_review]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  bootstrap-guard:
+    name: bootstrap-guard
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Detect workflow tampering from PR file list
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const pull_number = context.payload.pull_request.number;
+
+            const files = await github.paginate(
+              github.rest.pulls.listFiles,
+              {
+                owner,
+                repo,
+                pull_number,
+                per_page: 100
+              }
+            );
+
+            const touchedWorkflows = files.filter(f =>
+              f.filename.startsWith('.github/workflows/')
+            );
+
+            const protectedWorkflowNames = new Set([
+              '.github/workflows/pr-gate.yml',
+              '.github/workflows/pr-gate-bootstrap.yml'
+            ]);
+
+            const protectedWorkflowTouches = touchedWorkflows.filter(f =>
+              protectedWorkflowNames.has(f.filename)
+            );
+
+            const removedProtected = protectedWorkflowTouches.filter(f => f.status === 'removed');
+            const changedProtected = protectedWorkflowTouches.filter(f =>
+              ['added', 'modified', 'renamed', 'removed'].includes(f.status)
+            );
+
+            const summaryLines = [];
+            summaryLines.push(`PR #${pull_number}`);
+            summaryLines.push(`workflow files touched: ${touchedWorkflows.length}`);
+            for (const f of touchedWorkflows) {
+              summaryLines.push(`- ${f.filename} [${f.status}]`);
+            }
+
+            await core.summary
+              .addHeading('Bootstrap Guard Result')
+              .addCodeBlock(summaryLines.join('\n'), 'text')
+              .write();
+
+            if (removedProtected.length > 0) {
+              core.setFailed(
+                [
+                  'bootstrap-guard: protected workflow deletion detected',
+                  ...removedProtected.map(f => `- ${f.filename} [${f.status}]`)
+                ].join('\n')
+              );
+              return;
+            }
+
+            if (changedProtected.length > 0) {
+              core.setFailed(
+                [
+                  'bootstrap-guard: protected workflow change detected',
+                  'Changes to PR gate workflows are blocked in pull_request_target.',
+                  ...changedProtected.map(f => `- ${f.filename} [${f.status}]`)
+                ].join('\n')
+              );
+              return;
+            }
+
+            if (touchedWorkflows.length > 0) {
+              core.setFailed(
+                [
+                  'bootstrap-guard: workflow directory change detected',
+                  'Any change under .github/workflows/ is blocked by bootstrap guard.',
+                  ...touchedWorkflows.map(f => `- ${f.filename} [${f.status}]`)
+                ].join('\n')
+              );
+              return;
+            }
+
+            core.info('bootstrap-guard: no workflow tampering detected');
