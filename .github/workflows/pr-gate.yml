@@ -22,19 +22,29 @@ jobs:
         run: |
           git fetch origin ${{ github.base_ref }}
 
-      - name: Run PR gate tests
+      - name: Install test deps
         run: |
           python -m pip install --upgrade pip pytest
+
+      - name: Run PR gate tests
+        id: pr_gate_tests
+        continue-on-error: true
+        run: |
           pytest -q tests/test_pr_gate_deletion_guard.py
 
       - name: Run PR gate
         run: |
+          TESTS_STATUS="pass"
+          if [ "${{ steps.pr_gate_tests.outcome }}" != "success" ]; then
+            TESTS_STATUS="fail"
+          fi
+
           python tools/pr_gate.py \
             --repo "${{ github.repository }}" \
             --branch "${{ github.head_ref }}" \
             --base "${{ github.event.pull_request.base.ref }}" \
             --strict \
-            --syntax pass \
-            --tests pass \
+            --syntax unknown \
+            --tests "$TESTS_STATUS" \
             --freshness unknown \
             --change-context "${{ github.event.pull_request.title }} ${{ github.event.pull_request.body }}"
