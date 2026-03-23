@@ -1,4 +1,5 @@
 import json
+import re
 from pathlib import Path
 from typing import Any, Dict, Iterable, Optional
 
@@ -20,15 +21,62 @@ def _iter_json_files(path: Path) -> Iterable[Path]:
     return sorted(path.glob("*.json"), key=lambda p: p.stat().st_mtime, reverse=True)
 
 
-def _latest_task() -> Optional[Dict[str, Any]]:
+def _latest_task(change_context: str = "") -> Optional[Dict[str, Any]]:
     d = STATE_DIR / "tasks"
-    for p in _iter_json_files(d):
+    files = list(_iter_json_files(d))
+
+    # 1. query match 優先
+    ctx = (change_context or "").lower().strip()
+    tokens = [t for t in re.split(r"[^a-zA-Z0-9_\-]+", ctx) if len(t) >= 3]
+
+    best_obj = None
+    best_score = 0
+
+    if ctx:
+        for p in files:
+            obj = _load_json(p)
+            if not obj:
+                continue
+
+            query = str(obj.get("query", "")).lower()
+            haystack = " ".join([
+                query,
+                str(obj.get("task_id", "")).lower(),
+                str(obj.get("selected_skill", "")).lower(),
+                " ".join(str(x).lower() for x in (obj.get("selected_skills") or [])),
+                str(obj.get("planning_mode", "")).lower(),
+            ]).strip()
+
+            if not haystack:
+                continue
+
+            score = 0
+            if query and ctx in query:
+                score = 100
+            elif tokens:
+                score = sum(1 for t in tokens if t in haystack)
+
+            if score > best_score:
+                best_score = score
+                best_obj = obj.copy()
+                best_obj["_source_file"] = str(p.relative_to(ROOT))
+
+        if best_obj and best_score > 0:
+            best_obj["_match_mode"] = "query_match"
+            best_obj["_match_confidence"] = "high" if best_score >= 2 or best_score == 100 else "medium"
+            return best_obj
+
+    # 2. fallback: 最新
+    for p in files:
         obj = _load_json(p)
         if not obj:
             continue
         if any(k in obj for k in ("task_id", "status", "selected_skill")):
             obj["_source_file"] = str(p.relative_to(ROOT))
+            obj["_match_mode"] = "latest_fallback"
+            obj["_match_confidence"] = "medium" if ctx else "low"
             return obj
+
     return None
 
 
@@ -57,8 +105,8 @@ def _pick_selected_skills(task: Dict[str, Any]) -> Any:
     )
 
 
-def load_state_summary() -> Dict[str, Any]:
-    task = _latest_task()
+def load_state_summary(change_context: str = "") -> Dict[str, Any]:
+    task = _latest_task(change_context)
 
     task_id = _pick_task_id(task) if task else None
     task_status = task.get("status") if task else None
@@ -90,6 +138,8 @@ def load_state_summary() -> Dict[str, Any]:
         "chain_length": chain_length,
         "state_match": state_match,
         "reasons": reasons,
+        "match_mode": task.get("_match_mode") if task else None,
+        "match_confidence": task.get("_match_confidence") if task else None,
         "sources": {
             "task": task.get("_source_file") if task else None,
         },
