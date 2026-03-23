@@ -13,6 +13,7 @@ PR Gate - PR作成前のリスク判定と承認待ち状態管理
 import sys
 import json
 import subprocess
+import fnmatch
 from pathlib import Path
 from datetime import datetime
 from typing import Dict, Any, List, Optional
@@ -179,7 +180,7 @@ def detect_blocked_deletions(base: str, branch: str):
             if len(parts) != 2:
                 continue
             status, path = parts
-            if status == "D" and (path.startswith("tools/") or path.startswith("config/")):
+            if status in ("D","R","RM","RD") and any(fnmatch.fnmatch(path, p) or path.startswith(p.rstrip('*')) for p in policy.get("protected_paths", [])):
                 blocked.append(path)
 
     # ② working tree diff（ここが重要）
