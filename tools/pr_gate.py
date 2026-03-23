@@ -133,19 +133,41 @@ def detect_blocked_deletions(base: str, branch: str):
 
 
 def check_syntax() -> str:
-    """構文チェック（簡易版）"""
-    # 実際にはpython -m py_compile等を実行
-    return "unknown"
+    """構文チェック"""
+    result = subprocess.run(
+        [sys.executable, "-m", "py_compile", "tools/pr_gate.py"],
+        capture_output=True,
+        text=True,
+        cwd=ROOT,
+    )
+    return "pass" if result.returncode == 0 else "fail"
 
 def check_tests() -> str:
-    """テストチェック（簡易版）"""
-    # 実際にはpytest等を実行
-    return "unknown"
+    """PR gate関連テストチェック"""
+    result = subprocess.run(
+        [
+            "pytest",
+            "-q",
+            "tests/test_pr_gate_deletion_guard.py",
+                    ],
+        capture_output=True,
+        text=True,
+        cwd=ROOT,
+    )
+    return "pass" if result.returncode == 0 else "fail"
 
 def check_freshness() -> str:
-    """鮮度チェック（簡易版）"""
-    # 実際にはmainとの乖離をチェック
-    return "unknown"
+    """mainとの乖離チェック"""
+    result = subprocess.run(
+        ["git", "rev-list", "--count", "HEAD..origin/main"],
+        capture_output=True,
+        text=True,
+        cwd=ROOT,
+    )
+    if result.returncode != 0:
+        return "unknown"
+    behind = int(result.stdout.strip() or "0")
+    return "pass" if behind == 0 else "stale"
 
 def generate_pr_title(branch: str, changed_files: List[str]) -> str:
     """PRタイトル生成"""
