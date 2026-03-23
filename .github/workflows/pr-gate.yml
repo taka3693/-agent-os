@@ -10,7 +10,7 @@ jobs:
       - name: Checkout PR head
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.head_ref }}
+          ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
 
       - name: Setup Python
@@ -20,7 +20,7 @@ jobs:
 
       - name: Fetch base branch
         run: |
-          git fetch origin main
+          git fetch origin ${{ github.base_ref }}
 
       - name: Run PR gate tests
         run: |
