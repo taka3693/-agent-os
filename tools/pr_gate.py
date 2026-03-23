@@ -319,6 +319,7 @@ def main():
     parser.add_argument("--branch", required=True, help="Feature branch")
     parser.add_argument("--base", default="main", help="Base branch")
     parser.add_argument("--create-pr", action="store_true", help="Create PR using gh CLI")
+    parser.add_argument("--strict", action="store_true", help="Exit non-zero on hard block")
     
     args = parser.parse_args()
     
@@ -415,6 +416,9 @@ def main():
     result["state_file"] = str(state_file)
     
     print(json.dumps(result, ensure_ascii=False, indent=2))
+
+    if args.strict and merge_recommendation == "hard_block":
+        raise SystemExit(1)
 
 if __name__ == "__main__":
     main()
