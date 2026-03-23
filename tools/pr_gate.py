@@ -14,7 +14,10 @@ import sys
 import json
 import subprocess
 from pathlib import Path
-from tools.pr_gate_state import load_state_summary
+try:
+    from tools.pr_gate_state import load_state_summary
+except ModuleNotFoundError:
+    from pr_gate_state import load_state_summary
 from datetime import datetime
 from typing import Dict, Any, List, Optional
 
