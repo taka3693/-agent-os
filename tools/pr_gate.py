@@ -14,6 +14,10 @@ import sys
 import json
 import subprocess
 from pathlib import Path
+try:
+    from tools.pr_gate_state import load_state_summary
+except ModuleNotFoundError:
+    from pr_gate_state import load_state_summary
 from datetime import datetime
 from typing import Dict, Any, List, Optional
 
@@ -470,6 +474,7 @@ def main():
 
     # リスク判定
     blocked_deletions = detect_blocked_deletions(args.base, args.branch)
+    state_summary = load_state_summary()
     risk_level = assess_risk(
         changed_files,
         diff_summary,
@@ -528,6 +533,17 @@ def main():
         risk_level, blocked_deletions, checks
     )
 
+    changed_count = diff_summary.get("changed_files", diff_summary.get("files", len(changed_files)))
+    if changed_count > 0 and not state_summary.get("state_match", True):
+        if merge_recommendation == "safe_merge":
+            merge_recommendation = "manual_approval_required"
+
+
+    task_status = state_summary.get("task_status")
+    if task_status and task_status != "completed":
+        if merge_recommendation == "safe_merge":
+            merge_recommendation = "manual_approval_required"
+
     if deleted_files and not has_justification and risk_level == "high":
         merge_recommendation = "hard_block"
 
@@ -564,6 +580,7 @@ def main():
         "create_pr_command": create_pr_command,
         "manual_review_checklist": manual_review_checklist,
         "blocked_deletions": blocked_deletions,
+        "state_summary": state_summary,
         "warnings": warnings,
         "approval_requirements": approval_requirements,
         "checklist": checklist,
