@@ -16,3 +16,8 @@ summary
 *.json
 *.backup.*
 *.broken.*
+
+# generated artifacts
+artifacts/
+*.bak.*
+state/pr_gate/*.json
