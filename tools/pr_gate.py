@@ -427,8 +427,6 @@ def main():
     
     print(json.dumps(result, ensure_ascii=False, indent=2))
 
-if __name__ == "__main__":
-    main()
 
 
 
@@ -504,3 +502,6 @@ def build_checklist(
         checklist.append("Safe to merge under current policy")
 
     return checklist
+if __name__ == "__main__":
+    main()
+
