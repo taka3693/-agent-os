@@ -14,7 +14,7 @@ import sys
 import json
 import subprocess
 from pathlib import Path
-from pr_gate_state import load_state_summary
+from tools.pr_gate_state import load_state_summary
 from datetime import datetime
 from typing import Dict, Any, List, Optional
 
