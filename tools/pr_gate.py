@@ -162,6 +162,36 @@ def check_syntax() -> str:
     # 実際にはpython -m py_compile等を実行
     return "unknown"
 
+
+def get_branch_divergence(repo: str, branch: str, base: str) -> Dict[str, int]:
+    remote_base = f"origin/{base}"
+    subprocess.run(
+        ["git", "fetch", "origin", base],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    result = subprocess.run(
+        ["git", "rev-list", "--left-right", "--count", f"{remote_base}...HEAD"],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    left, right = result.stdout.strip().split()
+    return {
+        "behind_by": int(left),
+        "ahead_by": int(right),
+    }
+
+
+def _check_freshness_impl(repo: str, branch: str, base: str, max_behind: int = 20) -> str:
+    try:
+        divergence = get_branch_divergence(repo, branch, base)
+        return "fail" if divergence.get("behind_by", 0) > max_behind else "pass"
+    except Exception:
+        return "unknown"
+
+
 def check_tests() -> str:
     """テストチェック（簡易版）"""
     # 実際にはpytest等を実行
@@ -455,7 +485,7 @@ def main():
     checks = {
         "syntax": check_syntax() if syntax_check == "unknown" else syntax_check,
         "tests": check_tests() if tests_check == "unknown" else tests_check,
-        "freshness": check_freshness() if freshness_check == "unknown" else freshness_check,
+        "freshness": _check_freshness_impl(args.repo, args.branch, args.base) if freshness_check == "unknown" else freshness_check,
     }
 
     deleted_files = diff_summary.get("deleted_files", [])
