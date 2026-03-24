@@ -2,6 +2,13 @@
 from __future__ import annotations
 from typing import Dict, Any, List
 import re
+import sys
+from pathlib import Path
+
+# Add project root to path for strategy_manager import
+ROOT = Path(__file__).resolve().parents[2]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 DECISION_KEYWORDS = (
     "比較", "選定", "判断", "決めたい", "どれ", "優先", "優先順位",
@@ -15,7 +22,6 @@ def _derive_options(query: str) -> List[str]:
     if not q:
         return []
     
-    # Remove noise phrases first
     noise_patterns = [
         r"、どちらを優先すべきか",
         r"、どっちを優先すべきか",
@@ -36,7 +42,6 @@ def _derive_options(query: str) -> List[str]:
         cleaned_q = re.sub(pattern, "", cleaned_q)
     cleaned_q = cleaned_q.strip().rstrip("、").rstrip(",")
     
-    # Split by separators - order matters, "と" should be early
     seps = [" vs ", " VS ", " or ", " OR ", "と", "、", ",", "それとも", " か "]
     parts = [cleaned_q]
     for sep in seps:
@@ -48,7 +53,6 @@ def _derive_options(query: str) -> List[str]:
                 nxt.append(part)
         parts = nxt
     
-    # Final cleanup
     final = []
     for x in parts:
         x = x.strip()
@@ -74,6 +78,36 @@ def _pick_winner(scores: Dict[str, Dict[str, int]]) -> tuple:
     winner = sorted_opts[0][0] if sorted_opts else None
     deprioritized = sorted_opts[-1][0] if len(sorted_opts) > 1 else None
     return winner, deprioritized
+
+def _check_strategy_alignment(query: str, winner: str) -> Dict[str, Any]:
+    """Check alignment with weekly goals using strategy_manager."""
+    try:
+        from tools.strategy_manager import check_goal_alignment, get_strategy_summary
+        
+        # Check both the query and the winner
+        query_alignment = check_goal_alignment(query)
+        winner_alignment = check_goal_alignment(winner) if winner else {}
+        
+        summary = get_strategy_summary()
+        
+        return {
+            "checked": True,
+            "primary_goal": summary.get("primary_goal"),
+            "query_aligns_primary": query_alignment.get("aligns_with_primary", False),
+            "query_aligns_secondary": query_alignment.get("aligns_with_secondary", False),
+            "winner_aligns_primary": winner_alignment.get("aligns_with_primary", False),
+            "winner_aligns_secondary": winner_alignment.get("aligns_with_secondary", False),
+            "matched_keywords": list(set(
+                query_alignment.get("matched_keywords", []) + 
+                winner_alignment.get("matched_keywords", [])
+            )),
+            "recommendation": winner_alignment.get("recommendation", query_alignment.get("recommendation", "review")),
+        }
+    except Exception as e:
+        return {
+            "checked": False,
+            "error": str(e),
+        }
 
 def run_decision(query: str) -> Dict[str, Any]:
     q = (query or "").strip()
@@ -119,12 +153,23 @@ def run_decision(query: str) -> Dict[str, Any]:
         
         findings.append(f"判定結果: {winner} を優先（総合スコア上位）")
         summary = f"意思決定完了。{winner}を優先する。"
+        
+        # Check strategy alignment
+        strategy_alignment = _check_strategy_alignment(q, winner)
+        if strategy_alignment.get("checked"):
+            if strategy_alignment.get("winner_aligns_primary"):
+                findings.append(f"✅ 週目標「{strategy_alignment.get('primary_goal')}」と整合")
+            elif strategy_alignment.get("winner_aligns_secondary"):
+                findings.append(f"⚠️ 週目標「{strategy_alignment.get('primary_goal')}」とは副次的整合")
+            else:
+                findings.append(f"⚠️ 週目標「{strategy_alignment.get('primary_goal')}」との整合性を要確認")
     else:
         findings.append("候補不足: 比較対象を2〜5個に明示してください")
         decision["conclusion"] = "保留"
         decision["next_actions"] = ["比較対象を明確化して再入力する"]
         decision_reason_structured["confidence"] = "low"
         summary = "意思決定の下準備を完了した。候補不足のため、比較対象の明確化が必要。"
+        strategy_alignment = {"checked": False, "reason": "no_winner"}
     
     return {
         "summary": summary,
@@ -133,6 +178,7 @@ def run_decision(query: str) -> Dict[str, Any]:
         "axes": axes,
         "scores": scores,
         "decision_reason_structured": decision_reason_structured,
+        "strategy_alignment": strategy_alignment,
         "ok": True,
     }
 
