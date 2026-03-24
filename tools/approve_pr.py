@@ -86,10 +86,15 @@ def main():
     # 状態更新
     update_state(state, "approved")
     
+    merge_allowed = risk_level == "low"
+    state["merge_allowed"] = merge_allowed
+    update_state(state, "approved")
+
     result = {
         "ok": True,
         "status": "approved",
         "risk_level": risk_level,
+        "merge_allowed": merge_allowed,
         "next_action": next_action,
         "state_file": state.get("state_file"),
         "branch": state.get("branch"),
