@@ -79,3 +79,9 @@ def run_execution_plan(query: str, **kwargs):
 
 def execute_plan(query: str, **kwargs):
     return run(query, **kwargs)
+
+if __name__ == "__main__":
+    import json
+    import sys
+    q = " ".join(sys.argv[1:]).strip()
+    print(json.dumps(run(q), ensure_ascii=False, indent=2))
