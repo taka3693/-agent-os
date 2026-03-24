@@ -9,7 +9,15 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from runner.run_task import run_task as run_skill_task
+try:
+    from runner.run_execution_task import run_task as run_skill_task
+except ModuleNotFoundError:
+    import sys
+    from pathlib import Path as _Path
+    ROOT = _Path(__file__).resolve().parents[1]
+    if str(ROOT) not in sys.path:
+        sys.path.insert(0, str(ROOT))
+    from runner.run_execution_task import run_task as run_skill_task
 from tools.log_execution_result import append_execution_result
 from tools.update_execution_result import update_execution_result
 
@@ -129,6 +137,24 @@ def auto_task_action(query: str) -> Dict[str, Any]:
     }
     return result
 
+
+
+
+def looks_like_decision_query(query: str) -> bool:
+    if not query:
+        return False
+    q = query.lower()
+    patterns = [
+        "どちら",
+        "どっち",
+        "どれが良い",
+        "どれがいい",
+        "aとb",
+        "a or b",
+        " or ",
+        "か、それとも",
+    ]
+    return any(p in q for p in patterns)
 
 
 def decide_execute_action(query: str) -> Dict[str, Any]:
@@ -305,6 +331,12 @@ def decision_history_action(limit: int = 5) -> Dict[str, Any]:
         "history": stdout,
     }
 
+
+def generate_task_id() -> str:
+    ts = datetime.utcnow().strftime("%Y%m%d-%H%M%S-%f")
+    rand = uuid.uuid4().hex[:6]
+    return f"task-{ts}-{rand}"
+
 def main():
     available_actions = [
         "decision_cycle",
@@ -376,7 +408,10 @@ def main():
             print(json.dumps({"ok": False, "error": "missing_query"}, ensure_ascii=False))
             sys.exit(1)
 
-        result = decide_execute_action(query)
+        if looks_like_decision_query(query):
+            result = decide_execute_action(query)
+        else:
+            result = decide_execute_action(query)
 
         task_id = result.get("task_id")
 
@@ -397,18 +432,28 @@ def main():
 
         result["task_id"] = task_id
 
-        result["execution_log"] = maybe_log_execution_result("decide_execute", query, result)
-
-        execution_output = ""
+        has_execution_out = False
         if isinstance(result.get("execution_out"), dict):
-            execution_output = result["execution_out"].get("output", "") or ""
+            has_execution_out = True
         elif isinstance(result.get("result"), dict) and isinstance(result["result"].get("execution_out"), dict):
-            execution_output = result["result"]["execution_out"].get("output", "") or ""
+            has_execution_out = True
 
-        if result.get("ok"):
-            result["execution_update"] = update_execution_result(task_id, "success", execution_output)
+        if has_execution_out:
+            result["execution_log"] = maybe_log_execution_result("decide_execute", query, result)
+
+            execution_output = ""
+            if isinstance(result.get("execution_out"), dict):
+                execution_output = result["execution_out"].get("output", "") or ""
+            elif isinstance(result.get("result"), dict) and isinstance(result["result"].get("execution_out"), dict):
+                execution_output = result["result"]["execution_out"].get("output", "") or ""
+
+            if result.get("ok"):
+                result["execution_update"] = update_execution_result(task_id, "success", execution_output)
+            else:
+                result["execution_update"] = update_execution_result(task_id, "fail", execution_output)
         else:
-            result["execution_update"] = update_execution_result(task_id, "fail", execution_output)
+            result["execution_log"] = {"ok": False, "error": "execution_out_not_found"}
+            result["execution_update"] = {"ok": False, "error": "execution_out_not_found"}
 
     elif action == "redecide":
         argv = sys.argv[2:]
