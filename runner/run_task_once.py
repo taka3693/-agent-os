@@ -7,14 +7,18 @@ import sys
 import traceback
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, Callable
+from typing import Any, Dict, Callable, List
 
+BASE_DIR = Path(__file__).resolve().parents[1]
+if str(BASE_DIR) not in sys.path:
+    sys.path.insert(0, str(BASE_DIR))
+
+from policy.light_check_policy import evaluate_light_check, record_light_check
 from skills.critique import critique_impl
 from skills.experiment import experiment_impl
 from skills.execution import execution_impl
 from skills.retrospective import retrospective_impl
 
-BASE_DIR = Path(__file__).resolve().parents[1]
 TASKS_DIR = BASE_DIR / "state" / "tasks"
 
 SKILL_MODULES = {
@@ -173,6 +177,85 @@ def normalize_skill(task: Dict[str, Any]) -> str:
     return _step85_pick_selected_skill(task)
 
 
+def resolve_light_check_route(task: Dict[str, Any]) -> str | None:
+    answer = task.get("light_check_answer")
+    if isinstance(answer, str) and answer.strip():
+        return answer.strip()
+    return None
+
+
+def infer_route_target(query: str) -> str | None:
+    q = (query or "").strip().lower()
+    if "scrapling-official" in q:
+        return "scrapling"
+    if "scrapling" in q:
+        return "scrapling"
+    return None
+
+
+def build_route_context(query: str, chosen_route: str | None = None) -> Dict[str, Any]:
+    target = infer_route_target(query)
+    return {
+        "target": target,
+        "chosen_route": chosen_route,
+        "route_family": "install_path" if chosen_route else None,
+    }
+
+
+def _extract_recent_actions(task: Dict[str, Any]) -> List[Dict[str, Any]]:
+    recent_actions: List[Dict[str, Any]] = []
+    raw = task.get("recent_actions")
+    if isinstance(raw, list):
+        for item in raw:
+            if isinstance(item, dict):
+                recent_actions.append(item)
+    return recent_actions
+
+
+def _extract_completed_topic_keys(task: Dict[str, Any]) -> List[str]:
+    topic_keys: List[str] = []
+    raw = task.get("completed_light_checks")
+    if isinstance(raw, list):
+        for item in raw:
+            if isinstance(item, str) and item.strip() and item.strip() not in topic_keys:
+                topic_keys.append(item.strip())
+    return topic_keys
+
+
+def _apply_light_check(task: Dict[str, Any], query: str) -> Dict[str, Any]:
+    return evaluate_light_check(
+        text=query,
+        recent_actions=_extract_recent_actions(task),
+        task_id=str(task.get("task_id") or ""),
+        completed_topic_keys=_extract_completed_topic_keys(task),
+    )
+
+
+def mark_light_check_completed(task: Dict[str, Any], topic_key: str) -> Dict[str, Any]:
+    task = dict(task)
+    completed = _extract_completed_topic_keys(task)
+    normalized = (topic_key or "").strip()
+    if normalized and normalized not in completed:
+        completed.append(normalized)
+    task["completed_light_checks"] = completed
+    return task
+
+
+def apply_light_check_answer(task: Dict[str, Any], answer: str) -> Dict[str, Any]:
+    task = dict(task)
+    light_check = task.get("light_check") if isinstance(task.get("light_check"), dict) else {}
+    topic_key = str(light_check.get("topic_key") or "").strip()
+    if not topic_key:
+        return task
+
+    task = mark_light_check_completed(task, topic_key)
+    task["light_check_answer"] = (answer or "").strip() or None
+    task["light_check_resolved_at"] = now_iso()
+    if task.get("status") == "awaiting_check":
+        task["status"] = "queued"
+    return task
+
+
 def _step85_pipeline_meta(task_obj, selected_skill):
     selected_skills = []
 
@@ -253,6 +336,30 @@ def dispatch_skill(skill: str, query: str) -> Dict[str, Any]:
     return normalize_skill_output(skill, out)
 
 
+def dispatch_with_route(skill: str, query: str, chosen_route: str | None = None) -> Dict[str, Any]:
+    route_context = build_route_context(query, chosen_route)
+    result = dispatch_skill(skill, query)
+    result = dict(result)
+
+    if chosen_route:
+        result.setdefault("execution_route", chosen_route)
+
+    if route_context.get("target"):
+        result.setdefault("route_target", route_context["target"])
+
+    if chosen_route and route_context.get("target") == "scrapling":
+        result.setdefault(
+            "route_decision",
+            {
+                "target": "scrapling",
+                "chosen_route": chosen_route,
+                "dispatch_mode": "route-aware",
+            },
+        )
+
+    return result
+
+
 def run_research(query: str) -> Dict[str, Any]:
     return dispatch_skill("research", query)
 
@@ -260,17 +367,42 @@ def run_research(query: str) -> Dict[str, Any]:
 def execute_task(task: Dict[str, Any]) -> Dict[str, Any]:
     selected_skill = normalize_skill(task)
     query = normalize_query(task)
-    result = dispatch_skill(selected_skill, query)
+    chosen_route = resolve_light_check_route(task)
+    light_check = _apply_light_check(task, query)
     pipeline = _step85_pipeline_meta(task, selected_skill)
     plan = _step86_extract_plan(task)
+    route_context = build_route_context(query, chosen_route)
+
+    if light_check.get("check_required"):
+        return {
+            "selected_skill": selected_skill,
+            "selected_skills": pipeline["skill_chain"],
+            "pipeline": pipeline,
+            "plan": plan,
+            "route_context": route_context,
+            "planning_mode": "autonomous",
+            "query": query,
+            "chosen_route": chosen_route,
+            "light_check": light_check,
+            "result": {
+                "summary": "light check required before execution",
+                "skill": "light_check",
+                "findings": [],
+            },
+        }
+
+    result = dispatch_with_route(selected_skill, query, chosen_route)
 
     return {
         "selected_skill": selected_skill,
         "selected_skills": pipeline["skill_chain"],
         "pipeline": pipeline,
         "plan": plan,
+        "route_context": route_context,
         "planning_mode": "autonomous",
         "query": query,
+        "chosen_route": chosen_route,
+        "light_check": light_check,
         "result": result,
     }
 
@@ -300,9 +432,30 @@ def process_one(task_path: Path) -> Dict[str, Any]:
         task["selected_skills"] = payload["selected_skills"]
         task["pipeline"] = payload["pipeline"]
         task["plan"] = payload["plan"]
+        task["route_context"] = payload.get("route_context")
         task["planning_mode"] = payload["planning_mode"]
         task["query"] = payload["query"]
+        task["chosen_route"] = payload.get("chosen_route")
+        task["light_check"] = payload.get("light_check")
         task["result"] = payload["result"]
+
+        light_check = payload.get("light_check") or {}
+        if light_check.get("suppressed"):
+            record_light_check(light_check, suppressed=True)
+
+        if light_check.get("check_required"):
+            record_light_check(light_check, suppressed=False)
+            task["status"] = "awaiting_check"
+            write_json(task_path, task)
+            return {
+                "ok": False,
+                "status": "awaiting_check",
+                "task_id": task_id,
+                "task_path": str(task_path),
+                "selected_skill": payload["selected_skill"],
+                "light_check": light_check,
+            }
+
         write_json(task_path, task)
         return {
             "ok": True,
