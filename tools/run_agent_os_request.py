@@ -1095,14 +1095,17 @@ def main() -> int:
             reply_text += guard_summary
         
         telegram_batch_text = format_telegram_batch_summary(result)
-        telegram_reply_text = telegram_batch_text or reply_text
+        result_telegram_reply = result.get("telegram_reply_text")
+        if not isinstance(result_telegram_reply, str) or not result_telegram_reply.strip():
+            result_telegram_reply = None
+        telegram_reply_text = telegram_batch_text or result_telegram_reply or reply_text
         
         # Add guard failure summary to Telegram reply if guard blocked and using custom format
         if guard_summary and telegram_batch_text:
             telegram_reply_text += guard_summary
 
         telegram_send = None
-        if chat_id is not None and result.get("mode") in {"execution", "help", "browse", "meta", "fs", "policy", "pass", "router"}:
+        if chat_id is not None and result.get("mode") in {"execution", "help", "browse", "meta", "fs", "policy", "pass", "router", "route_approval"}:
             try:
                 telegram_send = send_telegram_message(chat_id, telegram_reply_text)
             except Exception as te:
