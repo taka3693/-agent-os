@@ -7,11 +7,13 @@ from typing import Any, Dict
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 WORKSPACE_ROOT = PROJECT_ROOT / "workspace"
+TASKS_DIR = PROJECT_ROOT / "state" / "tasks"
 
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from router.route_to_task import route_message_to_task
+from runner.run_route_task import apply_approval_decision as apply_route_approval_decision
 from runner.run_execution_task import run_task as run_execution_task_run_task
 
 
@@ -42,6 +44,10 @@ aos root
 
 ディレクトリ操作
 aos mkdir <dir>
+
+承認コマンド
+aos approve <task_id|task_path>
+aos reject <task_id|task_path>
 
 未対応
 aos rm / aos del / aos delete
@@ -186,6 +192,118 @@ def is_execution_command(text: str) -> bool:
     return any(s.startswith(p) for p in prefixes)
 
 
+def is_route_approval_command(text: str) -> bool:
+    s = (text or "").strip().lower()
+    return s.startswith("aos approve ") or s.startswith("aos reject ")
+
+
+def parse_route_approval_command(text: str) -> Dict[str, Any]:
+    s = (text or "").strip()
+    parts = s.split(maxsplit=2)
+    if len(parts) != 3:
+        return {
+            "ok": False,
+            "mode": "route_approval",
+            "status": "invalid_args",
+            "reason": "task_id_or_path_required",
+            "reply_text": "route approval: invalid_args",
+        }
+
+    decision = parts[1].strip().lower()
+    if decision not in {"approve", "reject"}:
+        return {
+            "ok": False,
+            "mode": "route_approval",
+            "status": "invalid_args",
+            "reason": "decision_must_be_approve_or_reject",
+            "reply_text": "route approval: invalid_args",
+        }
+
+    return {
+        "ok": True,
+        "mode": "route_approval",
+        "decision": decision,
+        "task_ref": parts[2].strip(),
+    }
+
+
+def resolve_route_task_path(task_ref: str) -> Path:
+    raw = str(task_ref or "").strip()
+    if not raw:
+        raise ValueError("task_ref is empty")
+
+    path = Path(raw)
+    if path.suffix == ".json" or "/" in raw:
+        if not path.is_absolute():
+            path = (PROJECT_ROOT / path).resolve()
+        return path
+
+    return (TASKS_DIR / f"{raw}.json").resolve()
+
+
+def summarize_route_approval(task_path: Path, decision: str, result: Dict[str, Any]) -> Dict[str, Any]:
+    approval_state = result.get("approval_state") if isinstance(result.get("approval_state"), dict) else {}
+    route_execution = result.get("route_execution") if isinstance(result.get("route_execution"), dict) else {}
+    route_result = result.get("route_result") if isinstance(result.get("route_result"), dict) else {}
+    task_id = str(result.get("task_id") or task_path.stem)
+    target = str(route_result.get("target") or approval_state.get("target") or "").strip()
+
+    summary = str(route_result.get("summary") or "").strip()
+    reply_text = f"route {decision}: {task_id}"
+    if target:
+        reply_text += f" target={target}"
+    if summary:
+        reply_text += f"\n{summary}"
+
+    return {
+        "ok": True,
+        "mode": "route_approval",
+        "status": "completed",
+        "decision": decision,
+        "task_id": task_id,
+        "task_path": str(task_path),
+        "approval_state": approval_state,
+        "route_execution": route_execution,
+        "route_result": route_result,
+        "reply_text": reply_text,
+        "telegram_reply_text": reply_text,
+    }
+
+
+def handle_route_approval(message_text: str) -> Dict[str, Any]:
+    parsed = parse_route_approval_command(message_text)
+    if not parsed.get("ok"):
+        return parsed
+
+    task_path = resolve_route_task_path(parsed["task_ref"])
+    if not task_path.exists():
+        return {
+            "ok": False,
+            "mode": "route_approval",
+            "status": "task_not_found",
+            "decision": parsed["decision"],
+            "task_path": str(task_path),
+            "reply_text": f"route {parsed['decision']}: task_not_found",
+            "telegram_reply_text": f"route {parsed['decision']}: task_not_found",
+        }
+
+    try:
+        result = apply_route_approval_decision(task_path, parsed["decision"])
+    except Exception as e:
+        return {
+            "ok": False,
+            "mode": "route_approval",
+            "status": "error",
+            "decision": parsed["decision"],
+            "task_path": str(task_path),
+            "error": f"{type(e).__name__}: {e}",
+            "reply_text": f"route {parsed['decision']}: error ({type(e).__name__}: {e})",
+            "telegram_reply_text": f"route {parsed['decision']}: error ({type(e).__name__}: {e})",
+        }
+
+    return summarize_route_approval(task_path, parsed["decision"], result)
+
+
 def summarize_task(task: Dict[str, Any]) -> Dict[str, Any]:
     return {
         "ok": task.get("status") == "completed",
@@ -218,6 +336,9 @@ def handle_message(message_text: str) -> Dict[str, Any]:
 
     if is_fs_command(message_text):
         return parse_fs_command(message_text)
+
+    if is_route_approval_command(message_text):
+        return handle_route_approval(message_text)
 
     if not is_execution_command(message_text):
         return {
