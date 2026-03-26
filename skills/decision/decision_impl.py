@@ -157,12 +157,15 @@ def run_decision(query: str) -> Dict[str, Any]:
         # Check strategy alignment
         strategy_alignment = _check_strategy_alignment(q, winner)
         if strategy_alignment.get("checked"):
+            pg = strategy_alignment.get("primary_goal")
             if strategy_alignment.get("winner_aligns_primary"):
-                findings.append(f"✅ 週目標「{strategy_alignment.get('primary_goal')}」と整合")
+                findings.append(f"✅ 週目標「{pg}」と整合 → 優先度高")
             elif strategy_alignment.get("winner_aligns_secondary"):
-                findings.append(f"⚠️ 週目標「{strategy_alignment.get('primary_goal')}」とは副次的整合")
+                findings.append(f"⚠️ 副次目標との整合（週目標「{pg}」ではない）")
+                findings.append(f"💡 主目標に集中すべきか再検討を推奨")
             else:
-                findings.append(f"⚠️ 週目標「{strategy_alignment.get('primary_goal')}」との整合性を要確認")
+                findings.append(f"🚨 警告: 週目標「{pg}」から外れています")
+                findings.append(f"💡 本当にこれを今やるべきか？主目標に戻ることを検討")
     else:
         findings.append("候補不足: 比較対象を2〜5個に明示してください")
         decision["conclusion"] = "保留"
