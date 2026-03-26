@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
+import subprocess
 import sys
 import traceback
 from datetime import datetime, timezone
@@ -20,6 +22,7 @@ from skills.execution import execution_impl
 from skills.retrospective import retrospective_impl
 
 TASKS_DIR = BASE_DIR / "state" / "tasks"
+ROUTE_RUNNER = BASE_DIR / "runner" / "run_route_task.py"
 
 SKILL_MODULES = {
     "critique": critique_impl,
@@ -336,32 +339,111 @@ def dispatch_skill(skill: str, query: str) -> Dict[str, Any]:
     return normalize_skill_output(skill, out)
 
 
-def dispatch_with_route(skill: str, query: str, chosen_route: str | None = None) -> Dict[str, Any]:
-    route_context = build_route_context(query, chosen_route)
-    result = dispatch_skill(skill, query)
-    result = dict(result)
+def _apply_route_metadata(
+    result: Dict[str, Any],
+    route_context: Dict[str, Any],
+    chosen_route: str | None = None,
+    dispatch_mode: str = "route-aware",
+) -> Dict[str, Any]:
+    enriched = dict(result)
 
     if chosen_route:
-        result.setdefault("execution_route", chosen_route)
+        enriched.setdefault("execution_route", chosen_route)
 
     if route_context.get("target"):
-        result.setdefault("route_target", route_context["target"])
+        enriched.setdefault("route_target", route_context["target"])
 
     if chosen_route and route_context.get("target") == "scrapling":
-        result.setdefault(
+        enriched.setdefault(
             "route_decision",
             {
                 "target": "scrapling",
                 "chosen_route": chosen_route,
-                "dispatch_mode": "route-aware",
+                "dispatch_mode": dispatch_mode,
             },
         )
 
-    return result
+    return enriched
+
+
+def _handle_direct_install(result: Dict[str, Any], route_context: Dict[str, Any]) -> Dict[str, Any]:
+    enriched = dict(result)
+    target = route_context.get("target") or "target"
+    enriched["summary"] = f"{target} を直接導入する方針"
+    enriched.setdefault("next_inputs", [])
+    enriched.setdefault("route_next_action", f"direct install path for {target}")
+    return enriched
+
+
+def _handle_clawhub_skill(result: Dict[str, Any], route_context: Dict[str, Any]) -> Dict[str, Any]:
+    enriched = dict(result)
+    target = route_context.get("target") or "target"
+    enriched["summary"] = f"{target} を ClawHub 経由で導入する方針"
+    enriched.setdefault("next_inputs", [])
+    enriched.setdefault("route_next_action", f"clawhub install path for {target}")
+    return enriched
+
+
+def dispatch_route_handler(skill: str, query: str, chosen_route: str, route_context: Dict[str, Any]) -> Dict[str, Any]:
+    result = dispatch_skill(skill, query)
+    result = dict(result)
+
+    handler_name = None
+    if route_context.get("target") == "scrapling":
+        if chosen_route == "direct_install":
+            handler_name = "handle_direct_install"
+            result = _handle_direct_install(result, route_context)
+        elif chosen_route == "clawhub_skill":
+            handler_name = "handle_clawhub_skill"
+            result = _handle_clawhub_skill(result, route_context)
+
+    if handler_name:
+        result.setdefault("route_handler", handler_name)
+        result.setdefault("route_family", "install_path")
+        return _apply_route_metadata(
+            result,
+            route_context=route_context,
+            chosen_route=chosen_route,
+            dispatch_mode="route-specific",
+        )
+
+    return _apply_route_metadata(
+        result,
+        route_context=route_context,
+        chosen_route=chosen_route,
+        dispatch_mode="route-aware",
+    )
+
+
+def dispatch_with_route(skill: str, query: str, chosen_route: str | None = None) -> Dict[str, Any]:
+    route_context = build_route_context(query, chosen_route)
+    if chosen_route:
+        return dispatch_route_handler(skill, query, chosen_route, route_context)
+
+    result = dispatch_skill(skill, query)
+    return _apply_route_metadata(result, route_context=route_context, chosen_route=chosen_route)
 
 
 def run_research(query: str) -> Dict[str, Any]:
     return dispatch_skill("research", query)
+
+
+def execute_route_next_action(task: Dict[str, Any], result: Dict[str, Any]) -> Dict[str, Any]:
+    action = result.get("route_next_action") if isinstance(result, dict) else None
+    if not isinstance(action, str) or not action.strip():
+        return {}
+
+    chosen_route = task.get("chosen_route") or result.get("execution_route")
+    route_target = result.get("route_target")
+    handler = result.get("route_handler")
+
+    return {
+        "status": "planned",
+        "action": action,
+        "handler": handler,
+        "chosen_route": chosen_route,
+        "target": route_target,
+    }
 
 
 def execute_task(task: Dict[str, Any]) -> Dict[str, Any]:
@@ -407,6 +489,50 @@ def execute_task(task: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
+def is_safe_route_autorun(task: Dict[str, Any]) -> bool:
+    route_execution = task.get("route_execution")
+    if not isinstance(route_execution, dict):
+        return False
+    if route_execution.get("status") != "planned":
+        return False
+    if task.get("route_family") != "install_path":
+        return False
+    if task.get("route_context", {}).get("target") != "scrapling":
+        return False
+    if task.get("route_handler") not in {"handle_direct_install", "handle_clawhub_skill"}:
+        return False
+    return True
+
+
+def maybe_autorun_route_task(task_path: Path, task: Dict[str, Any]) -> Dict[str, Any] | None:
+    forced = os.environ.get("AGENTOS_AUTORUN_ROUTE_TASK") == "1"
+    allowed_by_default = is_safe_route_autorun(task)
+    if not forced and not allowed_by_default:
+        return None
+
+    route_execution = task.get("route_execution")
+    if not isinstance(route_execution, dict):
+        return None
+    if route_execution.get("status") != "planned":
+        return None
+    if not ROUTE_RUNNER.exists():
+        return None
+
+    cp = subprocess.run(
+        [sys.executable, str(ROUTE_RUNNER), str(task_path)],
+        cwd=str(BASE_DIR),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if cp.returncode != 0:
+        raise RuntimeError(f"route runner failed: {cp.stderr or cp.stdout}")
+    result = json.loads(cp.stdout)
+    if isinstance(result, dict):
+        result.setdefault("route_autorun_policy", "forced_env" if forced else "allowed_safe_default")
+    return result
+
+
 def process_one(task_path: Path) -> Dict[str, Any]:
     task = read_json(task_path)
     task_id = task.get("task_id") or task_path.stem
@@ -438,6 +564,13 @@ def process_one(task_path: Path) -> Dict[str, Any]:
         task["chosen_route"] = payload.get("chosen_route")
         task["light_check"] = payload.get("light_check")
         task["result"] = payload["result"]
+        if isinstance(payload.get("result"), dict):
+            task["route_handler"] = payload["result"].get("route_handler")
+            task["route_family"] = payload["result"].get("route_family")
+            task["route_next_action"] = payload["result"].get("route_next_action")
+            route_execution = execute_route_next_action(task, payload["result"])
+            if route_execution:
+                task["route_execution"] = route_execution
 
         light_check = payload.get("light_check") or {}
         if light_check.get("suppressed"):
@@ -457,6 +590,10 @@ def process_one(task_path: Path) -> Dict[str, Any]:
             }
 
         write_json(task_path, task)
+        route_autorun = maybe_autorun_route_task(task_path, task)
+        if route_autorun is not None:
+            task = read_json(task_path)
+
         return {
             "ok": True,
             "status": "completed",
@@ -465,6 +602,9 @@ def process_one(task_path: Path) -> Dict[str, Any]:
             "selected_skill": payload["selected_skill"],
             "selected_skills": payload["selected_skills"],
             "planning_mode": payload["planning_mode"],
+            "route_autorun": route_autorun,
+            "route_execution": task.get("route_execution"),
+            "route_result": task.get("route_result"),
         }
     except Exception as e:
         task["status"] = "failed"
