@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import importlib.util
 import json
+import os
 import tempfile
 import unittest
 from pathlib import Path
@@ -153,7 +154,71 @@ class LightCheckPolicyTests(unittest.TestCase):
         self.assertEqual(payload["result"].get("route_target"), "scrapling")
         self.assertEqual(payload["route_context"].get("target"), "scrapling")
         self.assertEqual(payload["route_context"].get("chosen_route"), "direct_install")
-        self.assertEqual(payload["result"].get("route_decision", {}).get("dispatch_mode"), "route-aware")
+        self.assertEqual(payload["result"].get("route_decision", {}).get("dispatch_mode"), "route-specific")
+        self.assertEqual(payload["result"].get("route_handler"), "handle_direct_install")
+        self.assertEqual(payload["result"].get("route_family"), "install_path")
+        self.assertEqual(payload["result"].get("summary"), "scrapling を直接導入する方針")
+        self.assertEqual(payload["result"].get("route_next_action"), "direct install path for scrapling")
+
+        task_path = ROOT / "state" / "tasks" / "tmp-route-direct.json"
+        try:
+            task_copy = dict(task)
+            task_copy["status"] = "queued"
+            task_path.parent.mkdir(parents=True, exist_ok=True)
+            self.runner.write_json(task_path, task_copy)
+            out = self.runner.process_one(task_path)
+            saved = self.runner.read_json(task_path)
+            self.assertTrue(out["ok"])
+            self.assertEqual(saved.get("route_handler"), "handle_direct_install")
+            self.assertEqual(saved.get("route_family"), "install_path")
+            self.assertEqual(saved.get("route_next_action"), "direct install path for scrapling")
+            self.assertEqual(saved.get("route_execution", {}).get("status"), "simulated_done")
+            self.assertEqual(saved.get("route_execution", {}).get("handler"), "handle_direct_install")
+            self.assertEqual(saved.get("route_execution", {}).get("chosen_route"), "direct_install")
+            self.assertEqual(out.get("route_autorun", {}).get("route_autorun_policy"), "allowed_safe_default")
+
+            original = os.environ.get("AGENTOS_AUTORUN_ROUTE_TASK")
+            os.environ["AGENTOS_AUTORUN_ROUTE_TASK"] = "1"
+            try:
+                task_copy["task_id"] = "task-light-check-4b"
+                task_path.write_text(json.dumps(task_copy, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+                out2 = self.runner.process_one(task_path)
+                saved2 = self.runner.read_json(task_path)
+                self.assertTrue(out2["ok"])
+                self.assertEqual(saved2.get("route_execution", {}).get("status"), "simulated_done")
+                self.assertEqual(saved2.get("route_result", {}).get("route_handler"), "handle_direct_install")
+                self.assertEqual(saved2.get("route_result", {}).get("next_command"), "pip install scrapling")
+            finally:
+                if original is None:
+                    os.environ.pop("AGENTOS_AUTORUN_ROUTE_TASK", None)
+                else:
+                    os.environ["AGENTOS_AUTORUN_ROUTE_TASK"] = original
+        finally:
+            if task_path.exists():
+                task_path.unlink()
+
+    def test_clawhub_route_uses_specific_handler(self):
+        task = {
+            "task_id": "task-light-check-5",
+            "status": "queued",
+            "selected_skill": "research",
+            "query": "Scraplingをclawhub経由で入れたい。",
+            "recent_actions": [{"action": "uninstall", "target": "scrapling"}],
+            "completed_light_checks": ["scrapling_install_route"],
+            "light_check_answer": "clawhub_skill",
+        }
+        payload = self.runner.execute_task(task)
+        self.assertEqual(payload["chosen_route"], "clawhub_skill")
+        self.assertEqual(payload["result"].get("execution_route"), "clawhub_skill")
+        self.assertEqual(payload["result"].get("route_decision", {}).get("dispatch_mode"), "route-specific")
+        self.assertEqual(payload["result"].get("route_handler"), "handle_clawhub_skill")
+        self.assertEqual(payload["result"].get("route_family"), "install_path")
+        self.assertEqual(payload["result"].get("summary"), "scrapling を ClawHub 経由で導入する方針")
+        self.assertEqual(payload["result"].get("route_next_action"), "clawhub install path for scrapling")
+        planned = self.runner.execute_route_next_action(task, payload["result"])
+        self.assertEqual(planned.get("status"), "planned")
+        self.assertEqual(planned.get("handler"), "handle_clawhub_skill")
+        self.assertEqual(planned.get("chosen_route"), "clawhub_skill")
 
     def test_runner_no_check_for_regular_research_query(self):
         task = {
