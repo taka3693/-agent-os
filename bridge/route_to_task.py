@@ -491,12 +491,75 @@ def _extract_text_from_argv(argv) -> str:
     return ""
 
 
+
+def map_skill_to_action_type(selected_skill: str) -> str:
+    mapping = {
+        "execution": "plan",
+        "experiment": "plan",
+        "decision": "plan",
+        "critique": "plan",
+        "retrospective": "plan",
+        "research": "plan",
+    }
+    return mapping.get(str(selected_skill or "").strip(), "plan")
+
+
 def main(argv=None) -> int:
     argv = list(sys.argv if argv is None else argv)
     text = _extract_text_from_argv(argv)
 
     try:
         result = route_to_task(text)
+        # === CREATE TASK + ENQUEUE ===
+        from pathlib import Path
+        import json, time
+
+        tasks_dir = Path.home() / 'agent-os' / 'state' / 'tasks'
+        tasks_dir.mkdir(parents=True, exist_ok=True)
+
+        task_id = f"task-{int(time.time()*1000)}"
+        task_path = tasks_dir / f"{task_id}.json"
+
+        task_data = {
+            'id': task_id,
+            'text': text,
+            'route': result,
+        }
+
+        task_path.write_text(json.dumps(task_data, ensure_ascii=False, indent=2), encoding='utf-8')
+
+        queue_path = tasks_dir.parent / 'execution_queue.jsonl'
+        queue_entry = {
+            'execution_id': task_id,
+            'idempotency_key': task_id,
+            'fingerprint': task_id,
+            'action_type': map_skill_to_action_type(result.get('selected_skill', 'research')),
+            'payload': {
+                'task': text,
+                'task_path': str(task_path),
+            },
+            'status': 'queued',
+            'created_at': time.time(),
+            'attempt': 0,
+        }
+
+        queue_entry.setdefault("execution_id", task_id)
+        queue_entry.setdefault("idempotency_key", task_id)
+        queue_entry.setdefault("fingerprint", task_id)
+        queue_entry.setdefault("action_type", map_skill_to_action_type(result.get('selected_skill', 'research')))
+        queue_entry.setdefault("payload", {})
+        queue_entry["payload"].setdefault("task", text)
+        queue_entry["payload"].setdefault("task_path", str(task_path))
+        queue_entry.setdefault("status", "queued")
+        queue_entry.setdefault("created_at", time.time())
+        queue_entry.setdefault("attempt", 0)
+
+        with open(queue_path, 'a', encoding='utf-8') as f:
+            f.write(json.dumps(queue_entry, ensure_ascii=False) + '\n')
+
+        result['task_id'] = task_id
+        result['task_path'] = str(task_path)
+
         print(json.dumps({"ok": True, **result}, ensure_ascii=False))
         return 0
     except Exception as e:
