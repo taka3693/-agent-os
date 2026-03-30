@@ -2,8 +2,8 @@
 import importlib.util
 from pathlib import Path
 
-RUNNER = Path("/home/milky/agent-os/runner/run_task_once.py")
-
+ROOT = Path(__file__).resolve().parent.parent
+RUNNER = ROOT / "runner" / "run_task_once.py"
 spec = importlib.util.spec_from_file_location("run_task_once", str(RUNNER))
 mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mod)
