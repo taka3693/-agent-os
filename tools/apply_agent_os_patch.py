@@ -19,7 +19,7 @@ HOOK = r'''
   /* AGENT_OS_HOOK_BEGIN */
   try {
     const __agentOsText = typeof text === "string" ? text.trim() : "";
-    if (/^aos\s+decision:\s*(json|write|append|read)\b/i.test(__agentOsText)) {
+    if (/^aos\s+/i.test(__agentOsText)) {
       const __agentOsFindChatId = (obj, depth = 0) => {
         if (!obj || depth > 6) return null;
         if (Array.isArray(obj)) {
@@ -56,7 +56,7 @@ HOOK = r'''
 
       const __agentOsRes = spawnSync(
         "python3",
-        ["/home/milky/agent-os/tools/run_agent_os_request.py", "--json-stdin"],
+        ["/home/milky/agent-os/bridge/telegram_agent_os_entry.py", __agentOsText],
         {
           input: __agentOsPayload,
           encoding: "utf8",
@@ -75,6 +75,15 @@ HOOK = r'''
         __agentOsStderr
       );
       if (__agentOsRes.status === 0) {
+        try {
+          const __agentOsResult = JSON.parse(__agentOsStdout);
+          const __replyText = __agentOsResult.reply_text || __agentOsResult.telegram_reply_text || JSON.stringify(__agentOsResult);
+          if (__replyText && __agentOsChatId && typeof bot !== "undefined" && bot.api) {
+            bot.api.sendMessage(__agentOsChatId, __replyText);
+          }
+        } catch (e) {
+          console.error("[agent-os-hook] parse/send error:", e);
+        }
         return;
       }
     }
