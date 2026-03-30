@@ -569,3 +569,22 @@ def main(argv=None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
+
+def choose_skill(text: str):
+    """Return (skill, reason) tuple for the given text."""
+    text_lower = _safe_text(text).lower()
+    
+    if _step79_is_decision_text(text):
+        return ("decision", "decision_keyword_match")
+    if _step80_is_critique_text(text):
+        return ("critique", "critique_keyword_match")
+    if _step81_is_experiment_text(text):
+        return ("experiment", "experiment_keyword_match")
+    if _step82_is_execution_text(text):
+        return ("execution", "execution_keyword_match")
+    if _step83_is_retrospective_text(text):
+        return ("retrospective", "retrospective_keyword_match")
+    
+    # Default fallback
+    return ("research", "keyword match")
