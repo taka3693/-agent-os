@@ -1,4 +1,3 @@
-from tools.run_execution_adapter import map_task_to_action_type
 from __future__ import annotations
 from execution.execution_store import audit, claim_is_stale, create_claim, ledger_append, now_ts, queue_items, remove_claim, rewrite_queue
 from execution.self_operation_executor import execute_self_operation
@@ -287,24 +286,20 @@ def run_execution_worker(worker_id: str = "worker-1") -> Dict[str, Any]:
         # Execute (pass attempt to payload for attempt-aware actions)
         exec_payload = dict(target["payload"])
 
-# FORCE inject task into payload
-if "task" not in exec_payload:
-    exec_payload["task"] = str(target)
+        # Ensure task text exists in payload
+        if "task" not in exec_payload:
+            exec_payload["task"] = str(target)
 
         exec_payload["_worker_attempt"] = attempt
-        
 
-# FORCE task extraction
-task_text = (
-    exec_payload.get("task")
-    or exec_payload.get("text")
-    or exec_payload.get("instruction")
-    or str(exec_payload)
-)
-action_type = map_task_to_action_type(task_text)
-
-action_type = map_task_to_action_type(exec_payload.get("task") or exec_payload.get("text") or "")
-res = execute_self_operation(action_type, exec_payload)
+        task_text = (
+            exec_payload.get("task")
+            or exec_payload.get("text")
+            or exec_payload.get("instruction")
+            or str(exec_payload)
+        )
+        action_type = target.get('action_type', 'execution')
+        res = execute_self_operation(action_type, exec_payload)
 
         
         # === RESULT CLASSIFICATION (Phase 3.5) ===
