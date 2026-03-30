@@ -194,6 +194,37 @@ def is_execution_command(text: str) -> bool:
 
 
 
+
+def is_status_command(text: str) -> bool:
+    """aos status <task_id> - タスク状態確認"""
+    return bool(re.match(r"^aos\s+status\s+", text, re.IGNORECASE))
+
+def parse_status_command(text: str) -> Dict[str, Any]:
+    """aos status <task_id>"""
+    m = re.match(r"^aos\s+status\s+(\S+)", text, re.IGNORECASE)
+    if not m:
+        return {"ok": False, "mode": "status", "error": "invalid_syntax", "reply_text": "使い方: aos status <task_id>"}
+    
+    task_id = m.group(1)
+    task_path = PROJECT_ROOT / "state" / "tasks" / f"{task_id}.json"
+    
+    if not task_path.exists():
+        return {"ok": False, "mode": "status", "error": "not_found", "reply_text": f"タスク {task_id} が見つかりません"}
+    
+    import json
+    task = json.loads(task_path.read_text())
+    status = task.get("status", "unknown")
+    query = task.get("query", task.get("request", {}).get("text", ""))
+    skill = task.get("selected_skill", task.get("plan", {}).get("selected_skill", ""))
+    result = task.get("result", {})
+    summary = result.get("summary", "") if result else ""
+    
+    reply = f"タスク: {task_id}\nステータス: {status}\nスキル: {skill}\nクエリ: {query}"
+    if summary:
+        reply += f"\n結果: {summary}"
+    
+    return {"ok": True, "mode": "status", "task_id": task_id, "status": status, "reply_text": reply}
+
 def is_spawn_command(text: str) -> bool:
     """aos spawn <query> - バックグラウンドタスク投入"""
     return bool(re.match(r"^aos\s+spawn\s+", text, re.IGNORECASE))
@@ -380,6 +411,8 @@ def handle_message(message_text: str) -> Dict[str, Any]:
     if is_fs_command(message_text):
         return parse_fs_command(message_text)
 
+    if is_status_command(message_text):
+        return parse_status_command(message_text)
     if is_spawn_command(message_text):
         return parse_spawn_command(message_text)
     if is_route_approval_command(message_text):
