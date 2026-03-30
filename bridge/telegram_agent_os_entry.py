@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
+import re
 from typing import Any, Dict
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -192,6 +193,48 @@ def is_execution_command(text: str) -> bool:
     return any(s.startswith(p) for p in prefixes)
 
 
+
+def is_spawn_command(text: str) -> bool:
+    """aos spawn <query> - バックグラウンドタスク投入"""
+    return bool(re.match(r"^aos\s+spawn\s+", text, re.IGNORECASE))
+
+def parse_spawn_command(text: str) -> Dict[str, Any]:
+    """aos spawn <query> [--skill <skill>]"""
+    m = re.match(r"^aos\s+spawn\s+(.+)$", text, re.IGNORECASE | re.DOTALL)
+    if not m:
+        return {"ok": False, "mode": "spawn", "error": "invalid_syntax", "reply_text": "使い方: aos spawn <クエリ> [--skill <スキル>]"}
+    
+    rest = m.group(1).strip()
+    skill = "research"
+    
+    # --skill オプション抽出
+    skill_match = re.search(r"--skill\s+(\S+)", rest)
+    if skill_match:
+        skill = skill_match.group(1)
+        rest = re.sub(r"--skill\s+\S+", "", rest).strip()
+    
+    if not rest:
+        return {"ok": False, "mode": "spawn", "error": "empty_query", "reply_text": "エラー: クエリが空です"}
+    
+    # spawn_and_attach を使ってタスク投入
+    try:
+        import sys
+        if str(PROJECT_ROOT) not in sys.path:
+            sys.path.insert(0, str(PROJECT_ROOT))
+        from runner.spawn_and_attach import WorkerPool
+        pool = WorkerPool()
+        task_id = pool.submit(query=rest, skill=skill)
+        return {
+            "ok": True,
+            "mode": "spawn",
+            "task_id": task_id,
+            "query": rest,
+            "skill": skill,
+            "reply_text": f"タスク投入完了\nID: {task_id}\nクエリ: {rest}\nスキル: {skill}",
+        }
+    except Exception as e:
+        return {"ok": False, "mode": "spawn", "error": str(e), "reply_text": f"エラー: {e}"}
+
 def is_route_approval_command(text: str) -> bool:
     s = (text or "").strip().lower()
     return s.startswith("aos approve ") or s.startswith("aos reject ")
@@ -337,6 +380,8 @@ def handle_message(message_text: str) -> Dict[str, Any]:
     if is_fs_command(message_text):
         return parse_fs_command(message_text)
 
+    if is_spawn_command(message_text):
+        return parse_spawn_command(message_text)
     if is_route_approval_command(message_text):
         return handle_route_approval(message_text)
 
