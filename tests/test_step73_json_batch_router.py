@@ -1,11 +1,13 @@
 import importlib.util
+import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-spec = importlib.util.spec_from_file_location(
-    str(ROOT / "tools" / "run_agent_os_request.py")
-    str(Path("/home/milky/agent-os/tools/run_agent_os_request.py"))
-)
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+CLI = ROOT / "tools" / "run_agent_os_request.py"
+spec = importlib.util.spec_from_file_location("run_agent_os_request", str(CLI))
 mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mod)
 
@@ -19,8 +21,8 @@ def test_step73_validate_only_router_step_planned():
     assert out["results"][0]["validation_action"] == "plan_router_step"
     assert out["results"][0]["mode"] == "validation"
 
-def test_step73_execute_router_step_completed():
-    text = 'aos json {"steps": [{"command": "aos router 調査"}]}'
+def test_step73_execute_router_step():
+    text = 'aos json {"validate_only": false, "steps": [{"command": "aos router 比較して"}]}'
     out = mod.handle_message_with_json(text)
     assert out["ok"] is True
     assert out["validate_only"] is False
@@ -30,5 +32,5 @@ def test_step73_execute_router_step_completed():
 
 if __name__ == "__main__":
     test_step73_validate_only_router_step_planned()
-    test_step73_execute_router_step_completed()
-    print("PASS: Step73 JSON batch router OK")
+    test_step73_execute_router_step()
+    print("PASS: Step73 json batch router OK")

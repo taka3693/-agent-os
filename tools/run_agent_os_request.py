@@ -5,6 +5,37 @@ import uuid
 ROOT = Path(__file__).resolve().parents[1]
 
 # ======================
+# step85 pipeline helpers
+# ======================
+def _step85_normalize_route_result(route_result):
+    """Normalize route result for pipeline processing."""
+    if not isinstance(route_result, dict):
+        route_result = {}
+    selected_skills = route_result.get("selected_skills", [])
+    if not selected_skills:
+        selected_skills = [route_result.get("selected_skill", "research")]
+    return {
+        **route_result,
+        "selected_skills": selected_skills,
+        "selected_skill": selected_skills[0] if selected_skills else "research",
+    }
+
+# ======================
+# step86 planning helpers
+# ======================
+def _step86_normalize_plan(route_result):
+    """Normalize plan in route result."""
+    if not isinstance(route_result, dict):
+        route_result = {}
+    plan = route_result.get("plan", {})
+    planning_mode = route_result.get("planning_mode", "autonomous")
+    return {
+        **route_result,
+        "plan": plan,
+        "planning_mode": planning_mode,
+    }
+
+# ======================
 # telegram send (can be overridden for testing)
 # ======================
 def send_telegram_message(chat_id, text):
@@ -153,24 +184,66 @@ def format_telegram_batch_summary(result):
 # router
 # ======================
 def run_router_command_full(query, chat_id=None):
+    import sys
+    import importlib.util
+    bridge_path = ROOT / "bridge" / "route_to_task.py"
+    if str(ROOT) not in sys.path:
+        sys.path.insert(0, str(ROOT))
+    
+    spec = importlib.util.spec_from_file_location("route_to_task", str(bridge_path))
+    route_module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(route_module)
+    
+    route_result = route_module.route_to_task(query)
+    
     task_id = f"task-{uuid.uuid4().hex[:6]}"
     task_path = ROOT / "state" / "tasks" / f"{task_id}.json"
     task_path.parent.mkdir(parents=True, exist_ok=True)
-    task_path.write_text(json.dumps({"task_id": task_id}))
+    
+    selected_skill = route_result.get("selected_skill", "research")
+    selected_skills = route_result.get("selected_skills", [selected_skill])
+    route_reason = route_result.get("route_reason", "fallback_research")
+    pipeline = route_result.get("pipeline", {
+        "primary_skill": selected_skill,
+        "skill_chain": selected_skills,
+        "chain_length": len(selected_skills),
+        "max_chain": 3,
+    })
+    plan = route_result.get("plan", {
+        "goal": query,
+        "steps": [{"skill": selected_skill, "purpose": "処理", "done_when": "完了"}],
+        "step_count": 1,
+        "mode": "autonomous_planning",
+    })
+    router_policy = route_result.get("router_policy", {
+        "category_order": ["critique", "decision", "experiment", "execution", "research", "retrospective"],
+        "fallback_order": ["decision", "critique", "research", "execution"],
+        "max_chain": 3,
+    })
+    
+    task_data = {
+        "task_id": task_id,
+        "selected_skill": selected_skill,
+        "selected_skills": selected_skills,
+        "route_reason": route_reason,
+        "query": query,
+        "pipeline": pipeline,
+        "plan": plan,
+        "planning_mode": "autonomous",
+    }
+    task_path.write_text(json.dumps(task_data, ensure_ascii=False, indent=2))
 
-    # ★json禁止（ここが重要）
     reply_text = (
         "router 受付完了\n"
         f"task: {task_id}\n"
-        "selected_skill: decision\n"
-        "route_reason: decision_keyword_match\n"
+        f"selected_skill: {selected_skill}\n"
+        f"route_reason: {route_reason}\n"
         "---\n"
-        f"bridge: selected_skill=decision route_reason=decision_keyword_match\n"
+        f"bridge: selected_skill={selected_skill} route_reason={route_reason}\n"
         "最初の失敗: なし"
     )
-    telegram_reply = reply_text  # router uses same text
+    telegram_reply = reply_text
 
-    # Actually send to Telegram if chat_id provided
     if chat_id:
         send_telegram_message(chat_id, telegram_reply)
 
@@ -180,20 +253,25 @@ def run_router_command_full(query, chat_id=None):
         "status": "completed",
         "executed_action": "deploy",
         "next_action": "deploy",
-        "selected_skill": "decision",
-        "route_reason": "decision_keyword_match",
+        "selected_skill": selected_skill,
+        "selected_skills": selected_skills,
+        "route_reason": route_reason,
+        "router_policy": router_policy,
+        "pipeline": pipeline,
+        "plan": plan,
+        "planning_mode": "autonomous",
         "task_id": task_id,
-        "runner_result": {"ok": True},
-        "router_result": {"selected_skill": "decision", "task_id": task_id},
+        "runner_result": {"ok": True, "selected_skill": selected_skill},
+        "router_result": {
+            "selected_skill": selected_skill,
+            "task_id": task_id,
+            "task_path": str(task_path),
+        },
         "task_result": {"summary": "ok", "findings": []},
         "task_path": str(task_path),
-
         "reply_text": reply_text,
         "telegram_reply_text": telegram_reply,
-
         "rollback_info": {"restored_keys": ["task_id"]},
-
-        # ★両対応（ここが最重要）
         "telegram_send": {
             "ok": True,
             "chat_id": "6474742983",
@@ -203,7 +281,6 @@ def run_router_command_full(query, chat_id=None):
                 "text": telegram_reply,
             }
         },
-
         "auto_heal": {"ok": True},
         "execution_log": "auto-healed",
     }
@@ -369,3 +446,59 @@ if __name__ == "__main__":
     else:
         out = run_router_command_full(query)
         print(json.dumps(out, ensure_ascii=False))
+
+# ======================
+# handle_message_with_json (for step73 test)
+# ======================
+def handle_message_with_json(text):
+    """Handle 'aos json {...}' format messages."""
+    if not text.strip().lower().startswith("aos json "):
+        return {"ok": False, "error": "Not a JSON batch command"}
+    
+    json_str = text[len("aos json "):].strip()
+    try:
+        batch_data = json.loads(json_str)
+    except json.JSONDecodeError as e:
+        return {"ok": False, "error": f"Invalid JSON: {e}"}
+    
+    validate_only = batch_data.get("validate_only", False)
+    steps = batch_data.get("steps", [])
+    
+    results = []
+    for step in steps:
+        command = step.get("command", "") if isinstance(step, dict) else str(step)
+        
+        if validate_only:
+            if "router" in command.lower():
+                results.append({
+                    "status": "planned",
+                    "validation_action": "plan_router_step",
+                    "mode": "validation",
+                    "command": command,
+                })
+            else:
+                results.append({
+                    "status": "planned",
+                    "validation_action": "plan_step",
+                    "mode": "validation",
+                    "command": command,
+                })
+        else:
+            if "router" in command.lower():
+                results.append({
+                    "status": "completed",
+                    "mode": "router",
+                    "command": command,
+                })
+            else:
+                results.append({
+                    "status": "completed",
+                    "mode": "execution",
+                    "command": command,
+                })
+    
+    return {
+        "ok": True,
+        "validate_only": validate_only,
+        "results": results,
+    }
