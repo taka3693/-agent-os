@@ -2,8 +2,8 @@
 import importlib.util
 from pathlib import Path
 
-REQ = Path("/home/milky/agent-os/tools/run_agent_os_request.py")
-
+ROOT = Path(__file__).resolve().parent.parent
+REQ = ROOT / "tools" / "run_agent_os_request.py"
 spec = importlib.util.spec_from_file_location("run_agent_os_request", str(REQ))
 mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mod)
