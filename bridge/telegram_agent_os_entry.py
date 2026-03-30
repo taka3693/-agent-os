@@ -16,6 +16,7 @@ if str(PROJECT_ROOT) not in sys.path:
 from router.route_to_task import route_message_to_task
 from runner.run_route_task import apply_approval_decision as apply_route_approval_decision
 from runner.run_execution_task import run_task as run_execution_task_run_task
+from miso.bridge import handle_approval_callback as miso_handle_approval_callback
 
 
 HELP_TEXT = """AgentOS 使い方
@@ -271,6 +272,43 @@ def is_route_approval_command(text: str) -> bool:
     return s.startswith("aos approve ") or s.startswith("aos reject ")
 
 
+def is_miso_callback(text: str) -> bool:
+    """Check if text is a MISO inline button callback"""
+    s = (text or "").strip()
+    return s.startswith("miso:approve:") or s.startswith("miso:reject:") or s.startswith("miso:retry:") or s.startswith("miso:skip:") or s.startswith("miso:abort:")
+
+
+def handle_miso_callback(callback_data: str) -> Dict[str, Any]:
+    """Handle MISO inline button callback"""
+    try:
+        result = miso_handle_approval_callback(callback_data)
+        if result.get("ok"):
+            action = result.get("action", "unknown")
+            task_id = result.get("task_id", "unknown")
+            return {
+                "ok": True,
+                "mode": "miso_callback",
+                "action": action,
+                "task_id": task_id,
+                "reply_text": f"MISO: {action} {task_id}",
+                "telegram_reply_text": f"✅ {action}: {task_id}",
+            }
+        else:
+            return {
+                "ok": False,
+                "mode": "miso_callback",
+                "error": result.get("error", "unknown error"),
+                "reply_text": f"MISO error: {result.get('error')}",
+            }
+    except Exception as e:
+        return {
+            "ok": False,
+            "mode": "miso_callback",
+            "error": str(e),
+            "reply_text": f"MISO error: {e}",
+        }
+
+
 def parse_route_approval_command(text: str) -> Dict[str, Any]:
     s = (text or "").strip()
     parts = s.split(maxsplit=2)
@@ -415,6 +453,8 @@ def handle_message(message_text: str) -> Dict[str, Any]:
         return parse_status_command(message_text)
     if is_spawn_command(message_text):
         return parse_spawn_command(message_text)
+    if is_miso_callback(message_text):
+        return handle_miso_callback(message_text)
     if is_route_approval_command(message_text):
         return handle_route_approval(message_text)
 
