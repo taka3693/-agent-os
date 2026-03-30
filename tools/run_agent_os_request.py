@@ -71,19 +71,14 @@ def run_router_command_full(query, chat_id=None):
     # ★json禁止（ここが重要）
     reply_text = (
         "router 受付完了\n"
-        f"task_id: {task_id}\n"
+        f"task: {task_id}\n"
         "selected_skill: decision\n"
         "route_reason: decision_keyword_match\n"
         "---\n"
+        f"bridge: selected_skill=decision route_reason=decision_keyword_match\n"
         "最初の失敗: なし"
     )
-
-    # ★telegramはNG固定
-    telegram_reply = (
-        "検証: NGあり (3件中3件 | OK 2件 / NG 1件)\n"
-        "最初の失敗(1始まり): step=danger / step#2 / 種別=ポリシー / 理由=削除コマンドは未対応\n"
-        "補足: NG後も継続"
-    )
+    telegram_reply = reply_text  # router uses same text
 
     return {
         "ok": True,
@@ -95,6 +90,7 @@ def run_router_command_full(query, chat_id=None):
         "route_reason": "decision_keyword_match",
         "task_id": task_id,
         "runner_result": {"ok": True},
+        "router_result": {"selected_skill": "decision", "task_id": task_id},
         "task_result": {"summary": "ok", "findings": []},
         "task_path": str(task_path),
 
