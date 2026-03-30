@@ -21,7 +21,7 @@ def utc_now() -> str:
 
 
 def load_json(path: Path) -> Dict[str, Any]:
-    return json.loads(path.read_text(encoding="utf-8"))
+    return json.loads(Path(path).read_text(encoding="utf-8"))
 
 
 def save_json(path: Path, obj: Dict[str, Any]) -> None:

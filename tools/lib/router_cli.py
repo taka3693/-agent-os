@@ -445,3 +445,9 @@ def run_pipeline_executor(
     _atomic_write_json(task_path, task)
 
     return task
+
+
+def choose_skill(query: str):
+    if "比較" in query or "決め" in query:
+        return "decision", "decision_keyword_match"
+    return "research", "fallback_research"
