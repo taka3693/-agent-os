@@ -532,7 +532,7 @@ def handle_proactive_approval(text: str) -> Dict[str, Any]:
                 if action and args:
                     def run_async():
                         try:
-                            execute_and_log(state_root, fingerprint, action, args)
+                            execute_and_log(state_root, fingerprint=fingerprint, action=action, args=args)
                         except Exception as e:
                             pass  # ログに記録される
                     
