@@ -491,6 +491,18 @@ def handle_proactive_approval(text: str) -> Dict[str, Any]:
         decision_value = "approved" if decision == "approve" else "rejected"
         now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         
+        # 先にキューからaction/argsを取得
+        action_for_exec = None
+        args_for_exec = None
+        if queue_file.exists():
+            for line in queue_file.read_text().strip().split("\n"):
+                if line.strip():
+                    item = json.loads(line)
+                    if item.get("fingerprint") == fingerprint:
+                        action_for_exec = item.get("action")
+                        args_for_exec = item.get("args")
+                        break
+        
         try:
             # 承認のみ先に実行（auto_execute=False）
             result = apply_approval_decision(
@@ -515,19 +527,9 @@ def handle_proactive_approval(text: str) -> Dict[str, Any]:
                 import threading
                 from ops.approval_executor import execute_and_log
                 
-                # 承認キューから取得した情報で実行
-                queue_file = state_root / "approval_decisions.jsonl"
-                action = None
-                args = None
-                
-                # 直近の承認から情報を取得
-                for line in reversed(queue_file.read_text().strip().split("\n")):
-                    if line.strip():
-                        item = json.loads(line)
-                        if item.get("fingerprint") == fingerprint:
-                            action = item.get("action")
-                            args = item.get("args")
-                            break
+                # 事前に取得したaction/argsを使用
+                action = action_for_exec
+                args = args_for_exec
                 
                 if action and args:
                     def run_async():
