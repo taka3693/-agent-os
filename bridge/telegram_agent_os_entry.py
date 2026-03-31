@@ -51,6 +51,11 @@ aos mkdir <dir>
 aos approve <task_id|task_path>
 aos reject <task_id|task_path>
 
+Proactive承認キュー
+aos queue              - キュー一覧
+aos queue approve <id> - 承認して実行
+aos queue reject <id>  - 拒否
+
 未対応
 aos rm / aos del / aos delete
 aos mv / aos move / aos rename
@@ -429,6 +434,97 @@ def summarize_task(task: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
+
+
+# === Proactive Approval Commands ===
+
+def is_proactive_approval_command(text: str) -> bool:
+    """aos queue / aos queue approve <id> / aos queue reject <id>"""
+    s = (text or "").strip().lower()
+    return s == "aos queue" or s.startswith("aos queue ")
+
+
+def handle_proactive_approval(text: str) -> Dict[str, Any]:
+    """Handle proactive approval queue commands"""
+    import json
+    from datetime import datetime, timezone
+    from ops.approval_decision import apply_approval_decision
+    
+    s = (text or "").strip()
+    parts = s.split()
+    
+    state_root = PROJECT_ROOT / "state"
+    queue_file = state_root / "approval_queue.jsonl"
+    
+    # aos queue - リスト表示
+    if len(parts) == 2 and parts[1].lower() == "queue":
+        if not queue_file.exists():
+            return {"ok": True, "mode": "proactive_approval", "reply_text": "承認キュー: 空"}
+        
+        lines = [l for l in queue_file.read_text().strip().split("\n") if l.strip()]
+        if not lines:
+            return {"ok": True, "mode": "proactive_approval", "reply_text": "承認キュー: 空"}
+        
+        reply = f"承認キュー: {len(lines)}件\n"
+        for line in lines[-5:]:  # 最新5件
+            item = json.loads(line)
+            fp = item.get("fingerprint", "?")[:20]
+            action = item.get("action", "?")
+            reason = item.get("reason", "")[:30]
+            reply += f"\n• {fp}\n  {action}: {reason}"
+        
+        return {"ok": True, "mode": "proactive_approval", "reply_text": reply}
+    
+    # aos queue approve <id> / aos queue reject <id>
+    if len(parts) >= 4 and parts[1].lower() == "queue":
+        decision = parts[2].lower()
+        fingerprint = parts[3]
+        
+        if decision not in {"approve", "reject"}:
+            return {
+                "ok": False,
+                "mode": "proactive_approval",
+                "reply_text": "使い方: aos queue approve <id> または aos queue reject <id>",
+            }
+        
+        # approved/rejected に変換
+        decision_value = "approved" if decision == "approve" else "rejected"
+        now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        
+        try:
+            result = apply_approval_decision(
+                state_root=state_root,
+                timestamp=now,
+                fingerprint=fingerprint,
+                decision=decision_value,
+                reason=f"Telegram: {decision}",
+                source="telegram",
+                auto_execute=True,
+            )
+            
+            if result.get("ok"):
+                exec_result = result.get("execution", {}).get("execution_result", {})
+                status = exec_result.get("status", "unknown")
+                reply = f"✅ {decision}: {fingerprint}\n実行結果: {status}"
+            else:
+                reply = f"❌ {decision} 失敗: {result.get('status', 'unknown')}"
+            
+            return {"ok": result.get("ok", False), "mode": "proactive_approval", "reply_text": reply}
+        
+        except Exception as e:
+            return {
+                "ok": False,
+                "mode": "proactive_approval",
+                "reply_text": f"エラー: {e}",
+            }
+    
+    return {
+        "ok": False,
+        "mode": "proactive_approval",
+        "reply_text": "使い方:\naos queue - キュー表示\naos queue approve <id>\naos queue reject <id>",
+    }
+
+
 def handle_message(message_text: str) -> Dict[str, Any]:
     if is_help_command(message_text):
         return {
@@ -455,6 +551,9 @@ def handle_message(message_text: str) -> Dict[str, Any]:
         return parse_spawn_command(message_text)
     if is_miso_callback(message_text):
         return handle_miso_callback(message_text)
+    if is_proactive_approval_command(message_text):
+        return handle_proactive_approval(message_text)
+
     if is_route_approval_command(message_text):
         return handle_route_approval(message_text)
 
