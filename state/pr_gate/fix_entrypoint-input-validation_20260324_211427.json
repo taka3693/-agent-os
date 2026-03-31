@@ -1,0 +1,54 @@
+{
+  "ok": true,
+  "repo": "taka3693/-agent-os",
+  "branch": "fix/entrypoint-input-validation",
+  "base": "main",
+  "risk_level": "low",
+  "changed_files": [],
+  "diff_summary": {
+    "files": 0,
+    "additions": 0,
+    "deletions": 0
+  },
+  "checks": {
+    "syntax": "unknown",
+    "tests": "unknown",
+    "freshness": "pass"
+  },
+  "merge_recommendation": "safe_merge",
+  "pr_title": "Update from fix/entrypoint-input-validation",
+  "pr_body": "## Summary\n\n### Diff Summary\n- Files: 0\n- Additions: +0\n- Deletions: -0\n\n### Risk Assessment\n- Risk Level: **LOW**\n",
+  "pr_url": "https://github.com/taka3693/-agent-os/compare/main...fix/entrypoint-input-validation",
+  "create_pr_command": "gh pr create --title \"Update from fix/entrypoint-input-validation\" --body \"## Summary\\n\\n### Diff Summary\\n- Files: 0\\n- Additions: +0\\n- Deletions: -0\\n\\n### Risk Assessment\\n- Risk Level: **LOW**\\n\" --base main",
+  "manual_review_checklist": [
+    "- [ ] コードレビュー完了",
+    "- [ ] 動作確認完了",
+    "- [ ] テスト実行（必要時）"
+  ],
+  "blocked_deletions": [],
+  "state_summary": {
+    "task_id": "task-20260324-151301-177004",
+    "task_status": "completed",
+    "selected_skill": "research",
+    "selected_skills": [
+      "research"
+    ],
+    "planning_mode": "autonomous",
+    "chain_length": 1,
+    "state_match": true,
+    "reasons": [],
+    "match_mode": "latest_fallback",
+    "match_confidence": "low",
+    "sources": {
+      "task": "state/tasks/task-20260324-151301-177004.json"
+    }
+  },
+  "warnings": [],
+  "approval_requirements": [],
+  "checklist": [],
+  "status": "approved",
+  "created_at": "2026-03-24T21:14:27.801934",
+  "state_file": "/home/milky/agent-os/state/pr_gate/fix_entrypoint-input-validation_20260324_211427.json",
+  "approved_at": "2026-03-24T21:14:27.833715",
+  "merge_allowed": true
+}

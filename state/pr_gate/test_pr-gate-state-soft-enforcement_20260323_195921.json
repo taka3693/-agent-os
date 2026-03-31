@@ -1,0 +1,50 @@
+{
+  "ok": true,
+  "repo": "local",
+  "branch": "test/pr-gate-state-soft-enforcement",
+  "base": "main",
+  "risk_level": "low",
+  "changed_files": [],
+  "diff_summary": {
+    "files": 0,
+    "additions": 0,
+    "deletions": 0
+  },
+  "checks": {
+    "syntax": "unknown",
+    "tests": "unknown",
+    "freshness": "pass"
+  },
+  "merge_recommendation": "safe_merge",
+  "pr_title": "Update from test/pr-gate-state-soft-enforcement",
+  "pr_body": "## Summary\n\n### Diff Summary\n- Files: 0\n- Additions: +0\n- Deletions: -0\n\n### Risk Assessment\n- Risk Level: **LOW**\n",
+  "pr_url": "https://github.com/local/compare/main...test/pr-gate-state-soft-enforcement",
+  "create_pr_command": "gh pr create --title \"Update from test/pr-gate-state-soft-enforcement\" --body \"## Summary\\n\\n### Diff Summary\\n- Files: 0\\n- Additions: +0\\n- Deletions: -0\\n\\n### Risk Assessment\\n- Risk Level: **LOW**\\n\" --base main",
+  "manual_review_checklist": [
+    "- [ ] コードレビュー完了",
+    "- [ ] 動作確認完了",
+    "- [ ] テスト実行（必要時）"
+  ],
+  "blocked_deletions": [],
+  "state_summary": {
+    "task_id": "task-20260323-145802-819505",
+    "task_status": "completed",
+    "selected_skill": "decision",
+    "selected_skills": [
+      "decision"
+    ],
+    "planning_mode": "autonomous",
+    "chain_length": 1,
+    "state_match": false,
+    "reasons": [],
+    "sources": {
+      "task": "state/tasks/task-20260323-145802-819505.json"
+    }
+  },
+  "warnings": [],
+  "approval_requirements": [],
+  "checklist": [],
+  "status": "pending_approval",
+  "created_at": "2026-03-23T19:59:21.090844",
+  "state_file": "/home/milky/agent-os/state/pr_gate/test_pr-gate-state-soft-enforcement_20260323_195921.json"
+}

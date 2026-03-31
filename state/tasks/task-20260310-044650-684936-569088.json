@@ -33,5 +33,14 @@
   "error": "PlanValidationError: path escapes workspace: ../bridge_escape.txt",
   "artifacts": [],
   "run_log_path": "/home/milky/agent-os/state/runs/run-20260310T044650685352Z-22227b-task-20260310-044650-684936-569088.json",
-  "operation_count": 0
+  "operation_count": 0,
+  "schedule": {
+    "run_at": null,
+    "retry_count": 0,
+    "max_retries": 3,
+    "last_attempt_at": null,
+    "next_retry_at": null,
+    "locked_by": "pool-201845",
+    "locked_at": "2026-03-31T11:21:32Z"
+  }
 }

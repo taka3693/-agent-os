@@ -1,0 +1,34 @@
+{"apply_plan_id": "5d0724dc8dc7576c", "event": "apply_plan_created", "at": "2026-03-30T18:03:16", "actor": "manual_test", "reason": ""}
+{"apply_plan_id": "5d0724dc8dc7576c", "event": "post_apply_verification_started", "at": "2026-03-30T18:03:16", "actor": "verification_system", "reason": ""}
+{"apply_plan_id": "5d0724dc8dc7576c", "event": "post_apply_verification_passed", "at": "2026-03-30T18:03:16", "actor": "verification_system", "reason": "Syntax check passed | Critical file check passed"}
+{"apply_plan_id": "5d0724dc8dc7576c", "event": "apply_closed", "at": "2026-03-30T18:03:16", "actor": "verification_system", "reason": "verification_passed", "metadata": {"verification_id": "012b5ffb-c0f6-4a", "evidence_refs": ["syntax_check:passed", "critical_file_check:passed"]}}
+{"apply_plan_id": "9221c5413693329b", "event": "apply_plan_created", "at": "2026-03-30T18:03:16", "actor": "manual_test", "reason": ""}
+{"apply_plan_id": "9221c5413693329b", "event": "post_apply_verification_started", "at": "2026-03-30T18:03:16", "actor": "verification_system", "reason": ""}
+{"apply_plan_id": "9221c5413693329b", "event": "post_apply_verification_passed", "at": "2026-03-30T18:03:16", "actor": "verification_system", "reason": "Syntax check passed | Critical file check passed"}
+{"apply_plan_id": "9221c5413693329b", "event": "apply_closed", "at": "2026-03-30T18:03:16", "actor": "verification_system", "reason": "verification_passed", "metadata": {"verification_id": "936d9b8c-a17e-4c", "evidence_refs": ["syntax_check:passed", "critical_file_check:passed"]}}
+{"apply_plan_id": "a710220ebe81da0e", "event": "apply_plan_created", "at": "2026-03-30T18:03:16", "actor": "manual_test", "reason": ""}
+{"apply_plan_id": "a710220ebe81da0e", "event": "post_apply_verification_started", "at": "2026-03-30T18:03:16", "actor": "verification_system", "reason": ""}
+{"apply_plan_id": "a710220ebe81da0e", "event": "post_apply_verification_failed", "at": "2026-03-30T18:03:16", "actor": "verification_system", "reason": "Syntax check failed: syntax error in /tmp/tmph4hxelnl.py:   File \"/tmp/tmph4hxelnl.py\", line 1\n    def broken(:\n               ^\nSyntaxError: invalid syntax\n | Critical file check passed"}
+{"apply_plan_id": "d89a50fa776ba492", "event": "apply_plan_created", "at": "2026-03-30T18:03:16", "actor": "manual_test", "reason": ""}
+{"apply_plan_id": "d89a50fa776ba492", "event": "post_apply_verification_started", "at": "2026-03-30T18:03:16", "actor": "verification_system", "reason": ""}
+{"apply_plan_id": "d89a50fa776ba492", "event": "post_apply_verification_passed", "at": "2026-03-30T18:03:16", "actor": "verification_system", "reason": "Syntax check passed | Critical file check passed | Pytest passed"}
+{"apply_plan_id": "d89a50fa776ba492", "event": "apply_closed", "at": "2026-03-30T18:03:16", "actor": "verification_system", "reason": "verification_passed", "metadata": {"verification_id": "348d11de-b029-47", "evidence_refs": ["syntax_check:passed", "critical_file_check:passed"]}}
+{"apply_plan_id": "3cdbd96cc296a60b", "event": "apply_plan_created", "at": "2026-03-30T18:03:16", "actor": "manual_test", "reason": ""}
+{"apply_plan_id": "3cdbd96cc296a60b", "event": "post_apply_verification_started", "at": "2026-03-30T18:03:16", "actor": "verification_system", "reason": ""}
+{"apply_plan_id": "3cdbd96cc296a60b", "event": "post_apply_verification_passed", "at": "2026-03-30T18:03:16", "actor": "verification_system", "reason": "Syntax check passed | Critical file check passed"}
+{"apply_plan_id": "3cdbd96cc296a60b", "event": "apply_closed", "at": "2026-03-30T18:03:16", "actor": "verification_system", "reason": "verification_passed", "metadata": {"verification_id": "0e96c072-13e0-47", "evidence_refs": ["syntax_check:passed", "critical_file_check:passed"]}}
+{"apply_plan_id": "cb63ee160ba256b9", "event": "apply_plan_created", "at": "2026-03-30T18:03:16", "actor": "manual_test", "reason": ""}
+{"apply_plan_id": "cb63ee160ba256b9", "event": "post_apply_verification_started", "at": "2026-03-30T18:03:16", "actor": "verification_system", "reason": ""}
+{"apply_plan_id": "cb63ee160ba256b9", "event": "post_apply_verification_passed", "at": "2026-03-30T18:03:16", "actor": "verification_system", "reason": "Syntax check passed | Critical file check passed"}
+{"apply_plan_id": "cb63ee160ba256b9", "event": "apply_closed", "at": "2026-03-30T18:03:16", "actor": "verification_system", "reason": "verification_passed", "metadata": {"verification_id": "49b12e5f-f245-4f", "evidence_refs": ["syntax_check:passed", "critical_file_check:passed"]}}
+{"apply_plan_id": "c93eb097874040e5", "event": "apply_plan_created", "at": "2026-03-30T18:03:16", "actor": "manual_test", "reason": ""}
+{"apply_plan_id": "c93eb097874040e5", "event": "post_apply_verification_started", "at": "2026-03-30T18:03:16", "actor": "verification_system", "reason": ""}
+{"apply_plan_id": "c93eb097874040e5", "event": "post_apply_verification_passed", "at": "2026-03-30T18:03:16", "actor": "verification_system", "reason": "Syntax check passed | Critical file check passed"}
+{"apply_plan_id": "c93eb097874040e5", "event": "apply_closed", "at": "2026-03-30T18:03:16", "actor": "verification_system", "reason": "verification_passed", "metadata": {"verification_id": "363efd6a-5e0e-4e", "evidence_refs": ["syntax_check:passed", "critical_file_check:passed"]}}
+{"apply_plan_id": "63648e123e4ffa10", "event": "apply_plan_created", "at": "2026-03-30T18:03:16", "actor": "manual_test", "reason": ""}
+{"apply_plan_id": "63648e123e4ffa10", "event": "post_apply_verification_started", "at": "2026-03-30T18:03:16", "actor": "verification_system", "reason": ""}
+{"apply_plan_id": "63648e123e4ffa10", "event": "post_apply_verification_failed", "at": "2026-03-30T18:03:16", "actor": "verification_system", "reason": "Syntax check failed: syntax error in /tmp/tmp8710rrd0.py:   File \"/tmp/tmp8710rrd0.py\", line 1\n    def broken(:\n               ^\nSyntaxError: invalid syntax\n | Critical file check passed"}
+{"apply_plan_id": "728083650df9bc05", "event": "apply_plan_created", "at": "2026-03-30T18:03:16", "actor": "manual_test", "reason": ""}
+{"apply_plan_id": "728083650df9bc05", "event": "post_apply_verification_started", "at": "2026-03-30T18:03:16", "actor": "verification_system", "reason": ""}
+{"apply_plan_id": "728083650df9bc05", "event": "post_apply_verification_passed", "at": "2026-03-30T18:03:16", "actor": "verification_system", "reason": "Syntax check passed | Critical file check passed"}
+{"apply_plan_id": "728083650df9bc05", "event": "apply_closed", "at": "2026-03-30T18:03:16", "actor": "verification_system", "reason": "verification_passed", "metadata": {"verification_id": "7ef5458d-a8bc-40", "evidence_refs": ["syntax_check:passed", "critical_file_check:passed"]}}

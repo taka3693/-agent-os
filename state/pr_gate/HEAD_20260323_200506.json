@@ -1,0 +1,59 @@
+{
+  "ok": true,
+  "repo": "local",
+  "branch": "HEAD",
+  "base": "main",
+  "risk_level": "medium",
+  "changed_files": [
+    "tools/pr_gate.py",
+    "tools/pr_gate_state.py"
+  ],
+  "diff_summary": {
+    "files": 2,
+    "additions": 108,
+    "deletions": 0
+  },
+  "checks": {
+    "syntax": "unknown",
+    "tests": "unknown",
+    "freshness": "pass"
+  },
+  "merge_recommendation": "manual_approval_required",
+  "pr_title": "Update tools/pr_gate.py",
+  "pr_body": "## Summary\n\n### Changed Files\n- tools/pr_gate.py\n- tools/pr_gate_state.py\n\n### Diff Summary\n- Files: 2\n- Additions: +108\n- Deletions: -0\n\n### Risk Assessment\n- Risk Level: **MEDIUM**\n",
+  "pr_url": "https://github.com/local/compare/main...HEAD",
+  "create_pr_command": "gh pr create --title \"Update tools/pr_gate.py\" --body \"## Summary\\n\\n### Changed Files\\n- tools/pr_gate.py\\n- tools/pr_gate_state.py\\n\\n### Diff Summary\\n- Files: 2\\n- Additions: +108\\n- Deletions: -0\\n\\n### Risk Assessment\\n- Risk Level: **MEDIUM**\\n\" --base main",
+  "manual_review_checklist": [
+    "- [ ] コードレビュー完了",
+    "- [ ] 動作確認完了",
+    "- [ ] テスト実行（必要時）",
+    "",
+    "### Medium Risk Items",
+    "- [ ] 変更規模の妥当性確認",
+    "- [ ] 依存関係への影響確認"
+  ],
+  "blocked_deletions": [],
+  "state_summary": {
+    "task_id": "task-20260323-145802-819505",
+    "task_status": "completed",
+    "selected_skill": "decision",
+    "selected_skills": [
+      "decision"
+    ],
+    "planning_mode": "autonomous",
+    "chain_length": 1,
+    "state_match": true,
+    "reasons": [],
+    "sources": {
+      "task": "state/tasks/task-20260323-145802-819505.json"
+    }
+  },
+  "warnings": [],
+  "approval_requirements": [],
+  "checklist": [
+    "Merge requires manual approval"
+  ],
+  "status": "pending_approval",
+  "created_at": "2026-03-23T20:05:06.950509",
+  "state_file": "/home/milky/agent-os/state/pr_gate/HEAD_20260323_200506.json"
+}

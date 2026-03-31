@@ -1,0 +1,65 @@
+{"timestamp": "2026-03-14T14:38:40+0900", "proposal_id": "bdda8244db8b", "simulation_candidate": true, "simulation_passed": true, "simulation_summary": "simulation_passed", "reason": "all_safety_checks_passed"}
+{"simulation_candidate": true, "proposal_id": "bdda8244db8b", "selected_at": "2026-03-20T20:45:26", "source": "proposal_selector", "mode": "execution", "proposal_summary": "proposal_candidate=true", "pipeline_summary": "commit_candidate=true", "commit_candidate": true, "guard_failed": false, "reasons": []}
+{"ts": "2026-03-20T12:04:08.289686", "proposal_id": "bdda8244db8b", "result": {"passed": true}}
+{"ts": "2026-03-20T12:04:08.292126", "proposal_id": "024300e8e5d9", "result": {"passed": true}}
+{"ts": "2026-03-20T12:04:08.292267", "proposal_id": "e2c73de9c37b", "result": {"passed": true}}
+{"ts": "2026-03-20T12:04:52.065690", "proposal_id": "bdda8244db8b", "result": {"passed": true}}
+{"ts": "2026-03-20T12:04:52.066048", "proposal_id": "024300e8e5d9", "result": {"passed": true}}
+{"ts": "2026-03-20T12:04:52.066195", "proposal_id": "e2c73de9c37b", "result": {"passed": true}}
+{"ts": "2026-03-20T12:05:33.069739", "proposal_id": "bdda8244db8b", "result": {"passed": true}}
+{"ts": "2026-03-20T12:05:33.070009", "proposal_id": "024300e8e5d9", "result": {"passed": true}}
+{"ts": "2026-03-20T12:05:33.070219", "proposal_id": "e2c73de9c37b", "result": {"passed": true}}
+{"ts": "2026-03-20T12:06:08.531500", "proposal_id": "bdda8244db8b", "result": {"passed": true}}
+{"ts": "2026-03-20T12:06:08.531759", "proposal_id": "024300e8e5d9", "result": {"passed": true}}
+{"ts": "2026-03-20T12:06:08.531885", "proposal_id": "e2c73de9c37b", "result": {"passed": true}}
+{"ts": "2026-03-20T12:06:42.556509", "proposal_id": "bdda8244db8b", "result": {"passed": true}}
+{"ts": "2026-03-20T12:06:42.556810", "proposal_id": "024300e8e5d9", "result": {"passed": true}}
+{"ts": "2026-03-20T12:06:42.556933", "proposal_id": "e2c73de9c37b", "result": {"passed": true}}
+{"ts": "2026-03-20T12:07:30.021786", "proposal_id": "bdda8244db8b", "result": {"passed": true}}
+{"ts": "2026-03-20T12:07:30.022001", "proposal_id": "024300e8e5d9", "result": {"passed": true}}
+{"ts": "2026-03-20T12:07:30.022109", "proposal_id": "e2c73de9c37b", "result": {"passed": true}}
+{"ts": "2026-03-20T12:08:34.964254", "proposal_id": "bdda8244db8b", "result": {"passed": true}}
+{"ts": "2026-03-20T12:08:34.965203", "proposal_id": "024300e8e5d9", "result": {"passed": true}}
+{"ts": "2026-03-20T12:08:34.965350", "proposal_id": "e2c73de9c37b", "result": {"passed": true}}
+{"ts": "2026-03-20T12:09:49.447641", "proposal_id": "bdda8244db8b", "result": {"passed": true}}
+{"ts": "2026-03-20T12:09:49.448523", "proposal_id": "024300e8e5d9", "result": {"passed": true}}
+{"ts": "2026-03-20T12:09:49.448659", "proposal_id": "e2c73de9c37b", "result": {"passed": true}}
+{"ts": "2026-03-20T12:10:30.671238", "proposal_id": "bdda8244db8b", "result": {"passed": true}}
+{"ts": "2026-03-20T12:10:30.671480", "proposal_id": "024300e8e5d9", "result": {"passed": true}}
+{"ts": "2026-03-20T12:10:30.671616", "proposal_id": "e2c73de9c37b", "result": {"passed": true}}
+{"ts": "2026-03-20T12:11:27.590275", "proposal_id": "bdda8244db8b", "result": {"passed": true}}
+{"ts": "2026-03-20T12:11:27.591063", "proposal_id": "024300e8e5d9", "result": {"passed": true}}
+{"ts": "2026-03-20T12:11:27.591241", "proposal_id": "e2c73de9c37b", "result": {"passed": true}}
+{"ts": "2026-03-20T12:13:42.272435", "proposal_id": "bdda8244db8b", "result": {"passed": true}}
+{"ts": "2026-03-20T12:13:42.274276", "proposal_id": "024300e8e5d9", "result": {"passed": true}}
+{"ts": "2026-03-20T12:13:42.274414", "proposal_id": "e2c73de9c37b", "result": {"passed": true}}
+{"ts": "2026-03-20T14:31:43.800709", "proposal_id": "p-test-1", "candidate": {"dummy": true}, "result": {"passed": true}}
+{"ts": "2026-03-21T05:30:16.857152", "proposal_id": "p-test-1", "candidate": {"dummy": true}, "result": {"passed": true}}
+{"ts": "2026-03-27T05:41:17.048591", "proposal_id": "p-test-1", "candidate": {"dummy": true}, "result": {"passed": true}}
+{"ts": "2026-03-27T05:56:36.780989", "proposal_id": "p-test-1", "candidate": {"dummy": true}, "result": {"passed": true}}
+{"ts": "2026-03-27T06:00:41.390124", "proposal_id": "p-test-1", "candidate": {"dummy": true}, "result": {"passed": true}}
+{"ts": "2026-03-27T06:27:23.881352", "proposal_id": "p-test-1", "candidate": {"dummy": true}, "result": {"passed": true}}
+{"ts": "2026-03-27T07:29:12.529414", "proposal_id": "p-test-1", "candidate": {"dummy": true}, "result": {"passed": true}}
+{"ts": "2026-03-27T07:32:55.865739", "proposal_id": "p-test-1", "candidate": {"dummy": true}, "result": {"passed": true}}
+{"ts": "2026-03-27T08:39:01.666617", "proposal_id": "p-test-1", "candidate": {"dummy": true}, "result": {"passed": true}}
+{"ts": "2026-03-27T08:47:43.416672", "proposal_id": "p-test-1", "candidate": {"dummy": true}, "result": {"passed": true}}
+{"ts": "2026-03-27T14:13:33.804856", "proposal_id": "p-test-1", "candidate": {"dummy": true}, "result": {"passed": true}}
+{"ts": "2026-03-27T14:42:16.405500", "proposal_id": "p-test-1", "candidate": {"dummy": true}, "result": {"passed": true}}
+{"ts": "2026-03-27T14:44:36.764791", "proposal_id": "p-test-1", "candidate": {"dummy": true}, "result": {"passed": true}}
+{"ts": "2026-03-28T20:05:58.326479", "proposal_id": "p-test-1", "candidate": {"dummy": true}, "result": {"passed": true}}
+{"ts": "2026-03-30T07:10:15.286372", "proposal_id": "p-test-1", "candidate": {"dummy": true}, "result": {"passed": true}}
+{"ts": "2026-03-30T07:10:47.794372", "proposal_id": "p-test-1", "candidate": {"dummy": true}, "result": {"passed": true}}
+{"ts": "2026-03-30T07:11:17.522288", "proposal_id": "p-test-1", "candidate": {"dummy": true}, "result": {"passed": true}}
+{"ts": "2026-03-30T07:11:48.074272", "proposal_id": "p-test-1", "candidate": {"dummy": true}, "result": {"passed": true}}
+{"ts": "2026-03-30T07:12:15.180923", "proposal_id": "p-test-1", "candidate": {"dummy": true}, "result": {"passed": true}}
+{"ts": "2026-03-30T07:12:41.206243", "proposal_id": "p-test-1", "candidate": {"dummy": true}, "result": {"passed": true}}
+{"ts": "2026-03-30T07:13:07.133349", "proposal_id": "p-test-1", "candidate": {"dummy": true}, "result": {"passed": true}}
+{"ts": "2026-03-30T07:13:48.265841", "proposal_id": "p-test-1", "candidate": {"dummy": true}, "result": {"passed": true}}
+{"ts": "2026-03-30T08:32:10.827127", "proposal_id": "p-test-1", "candidate": {"dummy": true}, "result": {"passed": true}}
+{"ts": "2026-03-30T08:39:36.742186", "proposal_id": "p-test-1", "candidate": {"dummy": true}, "result": {"passed": true}}
+{"ts": "2026-03-30T08:42:31.913505", "proposal_id": "p-test-1", "candidate": {"dummy": true}, "result": {"passed": true}}
+{"ts": "2026-03-30T08:44:06.889709", "proposal_id": "p-test-1", "candidate": {"dummy": true}, "result": {"passed": true}}
+{"ts": "2026-03-30T08:44:44.130956", "proposal_id": "p-test-1", "candidate": {"dummy": true}, "result": {"passed": true}}
+{"ts": "2026-03-30T08:46:01.982554", "proposal_id": "p-test-1", "candidate": {"dummy": true}, "result": {"passed": true}}
+{"ts": "2026-03-30T08:59:28.377871", "proposal_id": "p-test-1", "candidate": {"dummy": true}, "result": {"passed": true}}
+{"ts": "2026-03-30T09:03:18.274427", "proposal_id": "p-test-1", "candidate": {"dummy": true}, "result": {"passed": true}}

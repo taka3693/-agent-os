@@ -1,0 +1,53 @@
+{
+  "ok": true,
+  "repo": "taka3693/-agent-os",
+  "branch": "feat/pr-gate-state-awareness-v2",
+  "base": "main",
+  "risk_level": "medium",
+  "changed_files": [
+    "tools/pr_gate.py",
+    "tools/pr_gate_state.py"
+  ],
+  "diff_summary": {
+    "files": 2,
+    "additions": 108,
+    "deletions": 0
+  },
+  "checks": {
+    "syntax": "pass",
+    "tests": "fail",
+    "freshness": "pass"
+  },
+  "merge_recommendation": "hard_block",
+  "pr_title": "feat: add tools/pr_gate.py",
+  "pr_body": "## Summary\n\n### Changed Files\n- tools/pr_gate.py\n- tools/pr_gate_state.py\n\n### Diff Summary\n- Files: 2\n- Additions: +108\n- Deletions: -0\n\n### Risk Assessment\n- Risk Level: **MEDIUM**\n",
+  "pr_url": "https://github.com/taka3693/-agent-os/compare/main...feat/pr-gate-state-awareness-v2",
+  "create_pr_command": "gh pr create --title \"feat: add tools/pr_gate.py\" --body \"## Summary\\n\\n### Changed Files\\n- tools/pr_gate.py\\n- tools/pr_gate_state.py\\n\\n### Diff Summary\\n- Files: 2\\n- Additions: +108\\n- Deletions: -0\\n\\n### Risk Assessment\\n- Risk Level: **MEDIUM**\\n\" --base main",
+  "manual_review_checklist": [
+    "- [ ] コードレビュー完了",
+    "- [ ] 動作確認完了",
+    "- [ ] テスト実行（必要時）",
+    "",
+    "### Medium Risk Items",
+    "- [ ] 変更規模の妥当性確認",
+    "- [ ] 依存関係への影響確認"
+  ],
+  "blocked_deletions": [],
+  "state_summary": {
+    "task_id": "task-failure-test-1772989056",
+    "task_status": "failed",
+    "selected_skill": "research",
+    "selected_skills": null,
+    "planning_mode": null,
+    "chain_length": null,
+    "state_match": true,
+    "reasons": [],
+    "sources": {
+      "task": "state/tasks/task-failure-test-1772989056.json"
+    }
+  },
+  "warnings": [],
+  "approval_requirements": [],
+  "checklist": [],
+  "state_file": "/home/runner/work/-agent-os/-agent-os/state/pr_gate/feat_pr-gate-state-awareness-v2_20260323_110639.json"
+}

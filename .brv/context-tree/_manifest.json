@@ -1,0 +1,49 @@
+{
+  "active_context": [
+    {
+      "order": 3,
+      "path": "_index.md",
+      "tokens": 555,
+      "type": "summary"
+    },
+    {
+      "order": 2,
+      "path": "architecture/_index.md",
+      "tokens": 590,
+      "type": "summary"
+    },
+    {
+      "order": 1,
+      "path": "architecture/learning_memory/_index.md",
+      "tokens": 555,
+      "type": "summary"
+    },
+    {
+      "importance": 50,
+      "path": "architecture/context.md",
+      "tokens": 81,
+      "type": "context"
+    },
+    {
+      "importance": 50,
+      "path": "architecture/learning_memory/context.md",
+      "tokens": 58,
+      "type": "context"
+    },
+    {
+      "importance": 50,
+      "path": "architecture/learning_memory/implementation_design.md",
+      "tokens": 542,
+      "type": "context"
+    }
+  ],
+  "generated_at": "2026-03-16T00:01:17.975Z",
+  "lane_tokens": {
+    "contexts": 681,
+    "stubs": 0,
+    "summaries": 1700
+  },
+  "source_fingerprint": "8e1e08981b84dded5f7f08e7635861eda26ef54f61bd1b415b6b5c718cdc2bf6",
+  "total_tokens": 2381,
+  "version": 1
+}

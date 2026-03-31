@@ -1,0 +1,118 @@
+{
+  "applied_fixes": [],
+  "execution_evidence": [],
+  "results": [],
+  "iterations": [],
+  "post_execution_critique": {
+    "ok": true,
+    "source_module": "skills.critique.critique_impl",
+    "source_function": "run_critique",
+    "findings": [
+      {
+        "type": "missing_constraints",
+        "severity": "high",
+        "target_step": 3,
+        "message": "制約条件の記述が弱い。現実的な判断にならない恐れがある。"
+      },
+      {
+        "type": "missing_evidence",
+        "severity": "medium",
+        "target_step": 3,
+        "message": "主張の根拠はあるかを確認すべき。"
+      },
+      {
+        "type": "missing_action",
+        "severity": "medium",
+        "target_step": 3,
+        "message": "改善案を次のアクションまで落とすべき。"
+      }
+    ],
+    "raw": {
+      "ok": true,
+      "skill": "critique",
+      "query": {
+        "state": {}
+      },
+      "summary": "stateベースで問題点を抽出した。",
+      "findings": [
+        {
+          "type": "missing_constraints",
+          "severity": "high",
+          "target_step": 3,
+          "message": "制約条件の記述が弱い。現実的な判断にならない恐れがある。"
+        },
+        {
+          "type": "missing_evidence",
+          "severity": "medium",
+          "target_step": 3,
+          "message": "主張の根拠はあるかを確認すべき。"
+        },
+        {
+          "type": "missing_action",
+          "severity": "medium",
+          "target_step": 3,
+          "message": "改善案を次のアクションまで落とすべき。"
+        }
+      ]
+    }
+  },
+  "post_execution_findings": [
+    {
+      "type": "missing_constraints",
+      "severity": "high",
+      "target_step": 3,
+      "message": "制約条件の記述が弱い。現実的な判断にならない恐れがある。"
+    },
+    {
+      "type": "missing_evidence",
+      "severity": "medium",
+      "target_step": 3,
+      "message": "主張の根拠はあるかを確認すべき。"
+    },
+    {
+      "type": "missing_action",
+      "severity": "medium",
+      "target_step": 3,
+      "message": "改善案を次のアクションまで落とすべき。"
+    }
+  ],
+  "final_state": {},
+  "completed_at": 1774935601,
+  "run_id": "execution_1774935601600534192",
+  "iteration_count": 0,
+  "initial_findings": [],
+  "final_findings": [
+    {
+      "type": "missing_constraints",
+      "severity": "high",
+      "target_step": 3,
+      "message": "制約条件の記述が弱い。現実的な判断にならない恐れがある。"
+    },
+    {
+      "type": "missing_evidence",
+      "severity": "medium",
+      "target_step": 3,
+      "message": "主張の根拠はあるかを確認すべき。"
+    },
+    {
+      "type": "missing_action",
+      "severity": "medium",
+      "target_step": 3,
+      "message": "改善案を次のアクションまで落とすべき。"
+    }
+  ],
+  "fixed_keys": [],
+  "skipped_keys": [],
+  "stats": {
+    "total_fix_attempts": 0,
+    "applied_count": 0,
+    "skipped_count": 0,
+    "verified_count": 0,
+    "failed_count": 0,
+    "initial_findings_count": 0,
+    "final_findings_count": 3,
+    "converged": false,
+    "stopped_reason": null,
+    "has_high_confidence_evidence": false
+  }
+}

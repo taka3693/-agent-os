@@ -1,0 +1,79 @@
+{
+  "task_id": "task-20260329033416",
+  "mode": "router",
+  "selected_skill": "decision",
+  "selected_skills": [
+    "execution",
+    "critique"
+  ],
+  "next_action": "deploy",
+  "chain_summary": {
+    "ok": true,
+    "count": 4,
+    "final_skill": "critique",
+    "final_result": {
+      "ok": true,
+      "skill": "critique",
+      "status": "completed",
+      "result": {
+        "score": 82,
+        "issues": 0,
+        "next_action": "deploy",
+        "reason": "score acceptable"
+      }
+    },
+    "next_action": "deploy"
+  },
+  "chain_results": [
+    {
+      "ok": true,
+      "skill": "execution",
+      "status": "completed",
+      "result": {
+        "summary": "execution completed",
+        "input_type": "str",
+        "artifact": {
+          "type": "draft_task",
+          "title": "autonomous execution artifact",
+          "body": "source=query"
+        }
+      }
+    },
+    {
+      "ok": true,
+      "skill": "critique",
+      "status": "completed",
+      "result": {
+        "score": 58,
+        "issues": 1,
+        "next_action": "improve",
+        "reason": "score below threshold"
+      }
+    },
+    {
+      "ok": true,
+      "skill": "improve",
+      "status": "completed",
+      "result": {
+        "summary": "improvement completed",
+        "artifact": {
+          "type": "draft_task",
+          "title": "improved artifact",
+          "revision": 1,
+          "body": " | improved"
+        }
+      }
+    },
+    {
+      "ok": true,
+      "skill": "critique",
+      "status": "completed",
+      "result": {
+        "score": 82,
+        "issues": 0,
+        "next_action": "deploy",
+        "reason": "score acceptable"
+      }
+    }
+  ]
+}

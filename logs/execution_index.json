@@ -1,0 +1,496 @@
+[
+  {
+    "task_id": "task-20260329024713",
+    "query": "hello",
+    "status": "recovered",
+    "selected_skill": "decision",
+    "selected_skills": [
+      "execution",
+      "critique"
+    ],
+    "state_anomaly_count": null,
+    "snapshot_anomaly_count": null,
+    "full_path": "/home/milky/agent-os/logs/execution_full/task-20260329024713.json"
+  },
+  {
+    "task_id": "task-20260329024820",
+    "query": "hello",
+    "status": "recovered",
+    "selected_skill": "decision",
+    "selected_skills": [
+      "execution",
+      "critique"
+    ],
+    "state_anomaly_count": null,
+    "snapshot_anomaly_count": null,
+    "full_path": "/home/milky/agent-os/logs/execution_full/task-20260329024820.json"
+  },
+  {
+    "task_id": "task-20260329024907",
+    "query": "hello",
+    "status": "recovered",
+    "selected_skill": "decision",
+    "selected_skills": [
+      "execution",
+      "critique"
+    ],
+    "state_anomaly_count": null,
+    "snapshot_anomaly_count": null,
+    "full_path": "/home/milky/agent-os/logs/execution_full/task-20260329024907.json"
+  },
+  {
+    "task_id": "task-20260329025139",
+    "query": "hello",
+    "status": "recovered",
+    "selected_skill": "decision",
+    "selected_skills": [
+      "execution",
+      "critique"
+    ],
+    "state_anomaly_count": null,
+    "snapshot_anomaly_count": null,
+    "full_path": "/home/milky/agent-os/logs/execution_full/task-20260329025139.json"
+  },
+  {
+    "task_id": "task-20260329025301",
+    "query": "hello",
+    "status": "recovered",
+    "selected_skill": "decision",
+    "selected_skills": [
+      "execution",
+      "critique"
+    ],
+    "state_anomaly_count": null,
+    "snapshot_anomaly_count": null,
+    "full_path": "/home/milky/agent-os/logs/execution_full/task-20260329025301.json"
+  },
+  {
+    "task_id": "task-20260329025355",
+    "query": "hello",
+    "status": "recovered",
+    "selected_skill": "decision",
+    "selected_skills": [
+      "execution",
+      "critique"
+    ],
+    "state_anomaly_count": null,
+    "snapshot_anomaly_count": null,
+    "full_path": "/home/milky/agent-os/logs/execution_full/task-20260329025355.json"
+  },
+  {
+    "task_id": "task-20260329025503",
+    "query": "hello",
+    "status": "recovered",
+    "selected_skill": "decision",
+    "selected_skills": [
+      "execution",
+      "critique"
+    ],
+    "state_anomaly_count": null,
+    "snapshot_anomaly_count": null,
+    "full_path": "/home/milky/agent-os/logs/execution_full/task-20260329025503.json"
+  },
+  {
+    "task_id": "task-20260329025643",
+    "query": "hello",
+    "status": "recovered",
+    "selected_skill": "decision",
+    "selected_skills": [
+      "execution",
+      "critique"
+    ],
+    "state_anomaly_count": null,
+    "snapshot_anomaly_count": null,
+    "full_path": "/home/milky/agent-os/logs/execution_full/task-20260329025643.json"
+  },
+  {
+    "task_id": "task-20260329025751",
+    "query": "hello",
+    "status": "recovered",
+    "selected_skill": "decision",
+    "selected_skills": [
+      "execution",
+      "critique"
+    ],
+    "state_anomaly_count": null,
+    "snapshot_anomaly_count": null,
+    "full_path": "/home/milky/agent-os/logs/execution_full/task-20260329025751.json"
+  },
+  {
+    "task_id": "task-20260329025840",
+    "query": "hello",
+    "status": "recovered",
+    "selected_skill": "decision",
+    "selected_skills": [
+      "execution",
+      "critique"
+    ],
+    "state_anomaly_count": null,
+    "snapshot_anomaly_count": null,
+    "full_path": "/home/milky/agent-os/logs/execution_full/task-20260329025840.json"
+  },
+  {
+    "task_id": "task-20260329025925",
+    "query": "hello",
+    "status": "recovered",
+    "selected_skill": "decision",
+    "selected_skills": [
+      "execution",
+      "critique"
+    ],
+    "state_anomaly_count": null,
+    "snapshot_anomaly_count": null,
+    "full_path": "/home/milky/agent-os/logs/execution_full/task-20260329025925.json"
+  },
+  {
+    "task_id": "task-20260329030049",
+    "query": "hello",
+    "status": "recovered",
+    "selected_skill": "decision",
+    "selected_skills": [
+      "execution",
+      "critique"
+    ],
+    "state_anomaly_count": null,
+    "snapshot_anomaly_count": null,
+    "full_path": "/home/milky/agent-os/logs/execution_full/task-20260329030049.json"
+  },
+  {
+    "task_id": "task-20260329030213",
+    "query": "hello",
+    "status": "recovered",
+    "selected_skill": "decision",
+    "selected_skills": [
+      "execution",
+      "critique"
+    ],
+    "state_anomaly_count": null,
+    "snapshot_anomaly_count": null,
+    "full_path": "/home/milky/agent-os/logs/execution_full/task-20260329030213.json"
+  },
+  {
+    "task_id": "task-20260329030449",
+    "query": "hello",
+    "status": "recovered",
+    "selected_skill": "decision",
+    "selected_skills": [
+      "execution",
+      "critique"
+    ],
+    "state_anomaly_count": null,
+    "snapshot_anomaly_count": null,
+    "full_path": "/home/milky/agent-os/logs/execution_full/task-20260329030449.json"
+  },
+  {
+    "task_id": "task-20260329030545",
+    "query": "hello",
+    "status": "recovered",
+    "selected_skill": "decision",
+    "selected_skills": [
+      "execution",
+      "critique"
+    ],
+    "state_anomaly_count": null,
+    "snapshot_anomaly_count": null,
+    "full_path": "/home/milky/agent-os/logs/execution_full/task-20260329030545.json"
+  },
+  {
+    "task_id": "task-20260329030702",
+    "query": "hello",
+    "status": "recovered",
+    "selected_skill": "decision",
+    "selected_skills": [
+      "execution",
+      "critique"
+    ],
+    "state_anomaly_count": null,
+    "snapshot_anomaly_count": null,
+    "full_path": "/home/milky/agent-os/logs/execution_full/task-20260329030702.json"
+  },
+  {
+    "task_id": "task-20260329030827",
+    "query": "hello",
+    "status": "recovered",
+    "selected_skill": "decision",
+    "selected_skills": [
+      "execution",
+      "critique"
+    ],
+    "state_anomaly_count": null,
+    "snapshot_anomaly_count": null,
+    "full_path": "/home/milky/agent-os/logs/execution_full/task-20260329030827.json"
+  },
+  {
+    "task_id": "task-20260329030957",
+    "query": "hello",
+    "status": "recovered",
+    "selected_skill": "decision",
+    "selected_skills": [
+      "execution",
+      "critique"
+    ],
+    "state_anomaly_count": null,
+    "snapshot_anomaly_count": null,
+    "full_path": "/home/milky/agent-os/logs/execution_full/task-20260329030957.json"
+  },
+  {
+    "task_id": "task-20260329031121",
+    "query": "hello",
+    "status": "recovered",
+    "selected_skill": "decision",
+    "selected_skills": [
+      "execution",
+      "critique"
+    ],
+    "state_anomaly_count": null,
+    "snapshot_anomaly_count": null,
+    "full_path": "/home/milky/agent-os/logs/execution_full/task-20260329031121.json"
+  },
+  {
+    "task_id": "task-20260329031234",
+    "query": "hello",
+    "status": "recovered",
+    "selected_skill": "decision",
+    "selected_skills": [
+      "execution",
+      "critique"
+    ],
+    "state_anomaly_count": null,
+    "snapshot_anomaly_count": null,
+    "full_path": "/home/milky/agent-os/logs/execution_full/task-20260329031234.json"
+  },
+  {
+    "task_id": "task-20260329031413",
+    "query": "hello",
+    "status": "recovered",
+    "selected_skill": "decision",
+    "selected_skills": [
+      "execution",
+      "critique"
+    ],
+    "state_anomaly_count": null,
+    "snapshot_anomaly_count": null,
+    "full_path": "/home/milky/agent-os/logs/execution_full/task-20260329031413.json"
+  },
+  {
+    "task_id": "task-20260329031526",
+    "query": "hello",
+    "status": "recovered",
+    "selected_skill": "decision",
+    "selected_skills": [
+      "execution",
+      "critique"
+    ],
+    "state_anomaly_count": null,
+    "snapshot_anomaly_count": null,
+    "full_path": "/home/milky/agent-os/logs/execution_full/task-20260329031526.json"
+  },
+  {
+    "task_id": "task-20260329031633",
+    "query": "hello",
+    "status": "recovered",
+    "selected_skill": "decision",
+    "selected_skills": [
+      "execution",
+      "critique"
+    ],
+    "state_anomaly_count": null,
+    "snapshot_anomaly_count": null,
+    "full_path": "/home/milky/agent-os/logs/execution_full/task-20260329031633.json"
+  },
+  {
+    "task_id": "task-20260329032038",
+    "query": "hello",
+    "status": "recovered",
+    "selected_skill": "decision",
+    "selected_skills": [
+      "execution",
+      "critique"
+    ],
+    "state_anomaly_count": null,
+    "snapshot_anomaly_count": null,
+    "full_path": "/home/milky/agent-os/logs/execution_full/task-20260329032038.json"
+  },
+  {
+    "task_id": "task-20260329032138",
+    "query": "hello",
+    "status": "recovered",
+    "selected_skill": "decision",
+    "selected_skills": [
+      "execution",
+      "critique"
+    ],
+    "state_anomaly_count": null,
+    "snapshot_anomaly_count": null,
+    "full_path": "/home/milky/agent-os/logs/execution_full/task-20260329032138.json"
+  },
+  {
+    "task_id": "task-20260329032139",
+    "query": "hello",
+    "status": "recovered",
+    "selected_skill": "decision",
+    "selected_skills": [
+      "execution",
+      "critique"
+    ],
+    "state_anomaly_count": null,
+    "snapshot_anomaly_count": null,
+    "full_path": "/home/milky/agent-os/logs/execution_full/task-20260329032139.json"
+  },
+  {
+    "task_id": "task-20260329032322",
+    "query": "hello",
+    "status": "recovered",
+    "selected_skill": "decision",
+    "selected_skills": [
+      "execution",
+      "critique"
+    ],
+    "state_anomaly_count": null,
+    "snapshot_anomaly_count": null,
+    "full_path": "/home/milky/agent-os/logs/execution_full/task-20260329032322.json"
+  },
+  {
+    "task_id": "task-20260329032323",
+    "query": "hello",
+    "status": "recovered",
+    "selected_skill": "decision",
+    "selected_skills": [
+      "execution",
+      "critique"
+    ],
+    "state_anomaly_count": null,
+    "snapshot_anomaly_count": null,
+    "full_path": "/home/milky/agent-os/logs/execution_full/task-20260329032323.json"
+  },
+  {
+    "task_id": "task-20260329032543",
+    "query": "hello",
+    "status": "recovered",
+    "selected_skill": "decision",
+    "selected_skills": [
+      "execution",
+      "critique"
+    ],
+    "state_anomaly_count": null,
+    "snapshot_anomaly_count": null,
+    "full_path": "/home/milky/agent-os/logs/execution_full/task-20260329032543.json"
+  },
+  {
+    "task_id": "task-20260329032544",
+    "query": "hello",
+    "status": "recovered",
+    "selected_skill": "decision",
+    "selected_skills": [
+      "execution",
+      "critique"
+    ],
+    "state_anomaly_count": null,
+    "snapshot_anomaly_count": null,
+    "full_path": "/home/milky/agent-os/logs/execution_full/task-20260329032544.json"
+  },
+  {
+    "task_id": "task-20260329033415",
+    "query": "aos router 比較して整理したい",
+    "status": "recovered",
+    "selected_skill": "decision",
+    "selected_skills": [
+      "execution",
+      "critique"
+    ],
+    "state_anomaly_count": null,
+    "snapshot_anomaly_count": null,
+    "full_path": "/home/milky/agent-os/logs/execution_full/task-20260329033415.json"
+  },
+  {
+    "task_id": "task-20260329033416",
+    "query": "aos router 比較して整理したい",
+    "status": "recovered",
+    "selected_skill": "decision",
+    "selected_skills": [
+      "execution",
+      "critique"
+    ],
+    "state_anomaly_count": null,
+    "snapshot_anomaly_count": null,
+    "full_path": "/home/milky/agent-os/logs/execution_full/task-20260329033416.json"
+  },
+  {
+    "task_id": "task-20260329033726",
+    "query": "aos json {\"validate_only\":true,\"steps\":[{\"id\":\"scan\",\"command\":\"aos ls workspace\"},{\"id\":\"danger\",\"command\":\"aos rm x\",\"continue_on_error\":true},{\"id\":\"read\",\"command\":\"aos read notes/todo.md\"}]}",
+    "status": "recovered",
+    "selected_skill": "decision",
+    "selected_skills": [
+      "execution",
+      "critique"
+    ],
+    "state_anomaly_count": null,
+    "snapshot_anomaly_count": null,
+    "full_path": "/home/milky/agent-os/logs/execution_full/task-20260329033726.json"
+  },
+  {
+    "task_id": "task-20260329033727",
+    "query": "aos route 比較して整理したい",
+    "status": "recovered",
+    "selected_skill": "decision",
+    "selected_skills": [
+      "execution",
+      "critique"
+    ],
+    "state_anomaly_count": null,
+    "snapshot_anomaly_count": null,
+    "full_path": "/home/milky/agent-os/logs/execution_full/task-20260329033727.json"
+  },
+  {
+    "task_id": "task-20260329033848",
+    "query": "aos json {\"validate_only\":true,\"steps\":[{\"id\":\"scan\",\"command\":\"aos ls workspace\"},{\"id\":\"danger\",\"command\":\"aos rm x\",\"continue_on_error\":true},{\"id\":\"read\",\"command\":\"aos read notes/todo.md\"}]}",
+    "status": "recovered",
+    "selected_skill": "decision",
+    "selected_skills": [
+      "execution",
+      "critique"
+    ],
+    "state_anomaly_count": null,
+    "snapshot_anomaly_count": null,
+    "full_path": "/home/milky/agent-os/logs/execution_full/task-20260329033848.json"
+  },
+  {
+    "task_id": "task-20260329033849",
+    "query": "aos route 比較して整理したい",
+    "status": "recovered",
+    "selected_skill": "decision",
+    "selected_skills": [
+      "execution",
+      "critique"
+    ],
+    "state_anomaly_count": null,
+    "snapshot_anomaly_count": null,
+    "full_path": "/home/milky/agent-os/logs/execution_full/task-20260329033849.json"
+  },
+  {
+    "task_id": "task-20260329033943",
+    "query": "aos json {\"validate_only\":true,\"steps\":[{\"id\":\"scan\",\"command\":\"aos ls workspace\"},{\"id\":\"danger\",\"command\":\"aos rm x\",\"continue_on_error\":true},{\"id\":\"read\",\"command\":\"aos read notes/todo.md\"}]}",
+    "status": "recovered",
+    "selected_skill": "decision",
+    "selected_skills": [
+      "execution",
+      "critique"
+    ],
+    "state_anomaly_count": null,
+    "snapshot_anomaly_count": null,
+    "full_path": "/home/milky/agent-os/logs/execution_full/task-20260329033943.json"
+  },
+  {
+    "task_id": "task-20260329033944",
+    "query": "aos route 比較して整理したい",
+    "status": "recovered",
+    "selected_skill": "decision",
+    "selected_skills": [
+      "execution",
+      "critique"
+    ],
+    "state_anomaly_count": null,
+    "snapshot_anomaly_count": null,
+    "full_path": "/home/milky/agent-os/logs/execution_full/task-20260329033944.json"
+  }
+]
