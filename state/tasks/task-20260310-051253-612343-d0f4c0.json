@@ -18,5 +18,14 @@
     "source": "route_to_task",
     "source_text": "aos write notes/alias_write.txt\nhello-from-alias\n",
     "runner": "python3 /home/milky/agent-os/runner/run_execution_task.py"
+  },
+  "schedule": {
+    "run_at": null,
+    "retry_count": 0,
+    "max_retries": 3,
+    "last_attempt_at": null,
+    "next_retry_at": null,
+    "locked_by": "pool-201845",
+    "locked_at": "2026-03-31T11:15:53Z"
   }
 }

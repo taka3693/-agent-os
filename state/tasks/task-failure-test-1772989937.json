@@ -5,9 +5,18 @@
   "status": "failed",
   "run_input": {},
   "result": null,
-  "error": {
-    "stage": "run",
-    "message": "query is required"
+  "error": "RuntimeError: query not found in task",
+  "updated_at": "2026-03-08T17:12:17+00:00",
+  "schedule": {
+    "run_at": null,
+    "retry_count": 0,
+    "max_retries": 3,
+    "last_attempt_at": null,
+    "next_retry_at": null,
+    "locked_by": "pool-201845",
+    "locked_at": "2026-03-31T11:15:27Z"
   },
-  "updated_at": "2026-03-08T17:12:17+00:00"
+  "started_at": "2026-03-31T20:15:27.134311+09:00",
+  "failed_at": "2026-03-31T20:15:27.135825+09:00",
+  "traceback": "Traceback (most recent call last):\n  File \"/home/milky/agent-os/runner/run_task_once.py\", line 554, in process_one\n    payload = execute_task(task)\n              ^^^^^^^^^^^^^^^^^^\n  File \"/home/milky/agent-os/runner/run_task_once.py\", line 451, in execute_task\n    query = normalize_query(task)\n            ^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/milky/agent-os/runner/run_task_once.py\", line 140, in normalize_query\n    raise RuntimeError(\"query not found in task\")\nRuntimeError: query not found in task\n"
 }
