@@ -522,3 +522,72 @@ def run_orchestration(
         _atomic_write_json(task_path, task)
 
     return task
+
+
+# ---------------------------------------------------------------------------
+# High-level: single-skill execution with automatic chain
+# ---------------------------------------------------------------------------
+
+def run_skill_with_chain(
+    task: Dict[str, Any],
+    task_path: Optional[Path] = None,
+    budget: Optional[Dict[str, Any]] = None,
+    max_chain: int = 3,
+) -> Dict[str, Any]:
+    """Execute a skill and automatically chain to next skills."""
+    from runner.run_research_task import (
+        determine_next_skill,
+        build_next_query,
+        run_selected_skill,
+        MAX_CHAIN_COUNT,
+    )
+    
+    task = dict(task)
+    task = _ensure_budget(task)
+    if budget and isinstance(budget, dict):
+        for k, v in budget.items():
+            task["budget"][k] = v
+
+    chain_count = 0
+    _max_chain = max_chain if max_chain else MAX_CHAIN_COUNT
+
+    while chain_count <= _max_chain:
+        skill = task.get("selected_skill", "research")
+        query = task.get("query") or task.get("input_text", "")
+
+        def _decompose(_t: Dict[str, Any], _q: str = query, _s: str = skill) -> List[Dict[str, Any]]:
+            return [{"query": _q, "skill": _s}]
+
+        def _worker(subtask: Dict[str, Any]) -> Dict[str, Any]:
+            return run_selected_skill(subtask["skill"], subtask["query"])
+
+        task = run_orchestration(
+            task=task,
+            decompose_fn=_decompose,
+            worker_fn=_worker,
+            task_path=task_path,
+            budget=task.get("budget"),
+        )
+
+        orch = task.get("orchestration_result", {})
+        sub_results = orch.get("subtask_results", [])
+        result = sub_results[0].get("result", {}) if sub_results else {}
+
+        next_skill = determine_next_skill(skill, result)
+        if next_skill is None:
+            break
+
+        chain_count += 1
+        next_query = build_next_query(skill, task, result)
+
+        task.setdefault("chain_history", []).append({
+            "skill": skill,
+            "chain_index": chain_count - 1,
+        })
+
+        task["selected_skill"] = next_skill
+        task["query"] = next_query
+        task["status"] = "queued"
+
+    task["chain_count"] = chain_count
+    return task

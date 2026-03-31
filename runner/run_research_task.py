@@ -13,9 +13,10 @@ from skills.decision.decision_impl import run_decision
 from skills.execution.execution_impl import run_execution
 from skills.critique.critique_impl import run_critique
 from skills.retrospective.retrospective_impl import run_retrospective
+from skills.experiment.experiment_impl import run_experiment
 
 
-VALID_SKILLS = {"research", "decision", "execution", "critique", "retrospective"}
+VALID_SKILLS = {"research", "decision", "execution", "critique", "retrospective", "experiment"}
 MAX_CHAIN_COUNT = 3
 
 
@@ -101,6 +102,8 @@ def run_selected_skill(selected_skill: str, query: str) -> Dict[str, Any]:
         return run_critique(query)
     if skill == "retrospective":
         return run_retrospective(query)
+    if skill == "experiment":
+        return run_experiment(query)
 
     raise RuntimeError(f"unsupported selected_skill: {skill}")
 

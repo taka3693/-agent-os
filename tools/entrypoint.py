@@ -80,34 +80,42 @@ def decision_cycle(request: str, cycles: int = 2) -> Dict[str, Any]:
 
 def run_task_action(task_payload: Dict[str, Any]) -> Dict[str, Any]:
     try:
+        from runner.orchestrator import run_skill_with_chain
+
         selected_skill = task_payload.get("selected_skill", "")
         query = task_payload.get("query", "")
-        
-        # Decision skill: run directly
-        if selected_skill == "decision":
-            from skills.decision.decision_impl import run_decision
-            result = run_decision(query)
-            return {"ok": True, "task_result": result, "decision": result.get("decision")}
-        
-        # Execution skill: use run_execution_task with task_path
-        task_path = task_payload.get("task_path")
-        if task_path and selected_skill == "execution":
-            from pathlib import Path
-            return run_skill_task(Path(task_path))
-        
-        # Other skills: try direct import
-        if selected_skill:
-            try:
-                mod = __import__(f"skills.{selected_skill}.{selected_skill}_impl", fromlist=["run"])
-                if hasattr(mod, "run"):
-                    result = mod.run(query)
-                    return {"ok": True, "task_result": result}
-            except ImportError:
-                pass
-        
-        return {"ok": False, "error": "unsupported_skill", "skill": selected_skill}
+
+        task = {
+            "task_id": task_payload.get("task_id", "unknown"),
+            "selected_skill": selected_skill,
+            "query": query,
+            "status": "queued",
+        }
+
+        task_path_str = task_payload.get("task_path")
+        task_path = Path(task_path_str) if task_path_str else None
+
+        result_task = run_skill_with_chain(task, task_path=task_path)
+
+        orch = result_task.get("orchestration_result", {})
+        sub_results = orch.get("subtask_results", [])
+        task_result = sub_results[-1].get("result", {}) if sub_results else {}
+
+        out: Dict[str, Any] = {
+            "ok": result_task.get("status") == "completed",
+            "task_result": task_result,
+            "status": result_task.get("status"),
+            "chain_count": result_task.get("chain_count", 0),
+        }
+
+        if selected_skill == "decision" and isinstance(task_result, dict):
+            out["decision"] = task_result.get("decision")
+
+        return out
     except Exception as e:
         return {"ok": False, "error": "run_task_failed", "detail": f"{type(e).__name__}: {e}"}
+
+
 def auto_task_action(query: str) -> Dict[str, Any]:
     try:
         cp = subprocess.run(
