@@ -37,3 +37,27 @@ class TestActionPolicy(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestFailureAnalyzer(unittest.TestCase):
+    def test_analyze_test_failures(self):
+        from learning.failure_analyzer import analyze_test_failures
+        
+        output = "FAILED tests/test_foo.py::test_bar - AssertionError"
+        failures = analyze_test_failures(output)
+        
+        self.assertEqual(len(failures), 1)
+        self.assertEqual(failures[0]["type"], "test_failure")
+        self.assertEqual(failures[0]["file"], "tests/test_foo.py")
+        self.assertEqual(failures[0]["test"], "test_bar")
+
+
+class TestSelfImprove(unittest.TestCase):
+    def test_run_self_improvement_cycle_dry_run(self):
+        from learning.self_improve import run_self_improvement_cycle
+        
+        result = run_self_improvement_cycle(dry_run=True)
+        
+        self.assertIn("issues_analyzed", result)
+        self.assertIn("fixes_proposed", result)
+        self.assertTrue(result["dry_run"])
