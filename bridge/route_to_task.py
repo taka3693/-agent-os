@@ -62,92 +62,14 @@ except Exception:
     SHARED_ROUTE_REASON_LITERALS = None
 
 
-DECISION_KEYWORDS = [
-    "比較",
-    "選定",
-    "判断",
-    "決めたい",
-    "どれ",
-    "優先",
-    "choose",
-    "compare",
-    "decision",
-    "prioritize",
-]
-
-CRITIQUE_KEYWORDS = [
-    "批評",
-    "レビュー",
-    "改善点",
-    "問題点",
-    "弱点",
-    "欠点",
-    "穴",
-    "矛盾",
-    "違和感",
-    "甘い",
-    "粗い",
-    "詰めが甘い",
-    "見落とし",
-    "危険",
-    "リスク",
-    "critique",
-    "review",
-    "weakness",
-    "issue",
-    "risk",
-]
-
-EXPERIMENT_KEYWORDS = [
-    "試す",
-    "試したい",
-    "テスト",
-    "検証",
-    "仮説",
-    "実験",
-    "試行",
-    "比較実験",
-    "experiment",
-    "test",
-    "validate",
-    "validation",
-    "try",
-    "hypothesis",
-]
-
-EXECUTION_KEYWORDS = [
-    "実行",
-    "進める",
-    "やる",
-    "作る",
-    "実装",
-    "着手",
-    "対応",
-    "片付ける",
-    "execute",
-    "execution",
-    "implement",
-    "build",
-    "do",
-    "ship",
-]
-
-RETROSPECTIVE_KEYWORDS = [
-    "振り返り",
-    "ふりかえり",
-    "反省",
-    "レビュー会",
-    "総括",
-    "改善振り返り",
-    "kpt",
-    "keep",
-    "problem",
-    "try",
-    "retrospective",
-    "retro",
-    "postmortem",
-    "lessons learned",
-]
+# Keywords imported from single source of truth
+from router.classify import (
+    DECISION_KEYWORDS,
+    CRITIQUE_KEYWORDS,
+    EXPERIMENT_KEYWORDS,
+    EXECUTION_KEYWORDS,
+    RETROSPECTIVE_KEYWORDS,
+)
 
 ROUTER_CATEGORY_ORDER = [
     "critique",

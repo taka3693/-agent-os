@@ -12,7 +12,7 @@ def _call_openclaw(query: str, system_hint: str = "") -> Dict[str, Any]:
     
     try:
         result = subprocess.run(
-            ["openclaw", "agent", "--agent", "main", "--message", prompt, "--json"],
+            ["openclaw", "agent", "--agent", "dev", "--message", prompt, "--json"],
             capture_output=True,
             text=True,
             timeout=120,
@@ -78,3 +78,8 @@ def run_research(query: str) -> dict:
         "findings": [f"モデル: {result.get('model', 'unknown')}"],
         "ai_response": True,
     }
+
+# Aliases for consistent interface
+run = run_research
+execute = run_research
+
