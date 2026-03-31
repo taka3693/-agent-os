@@ -58,6 +58,9 @@ def execute_approved_action(
             return _execute_run_skill(args)
         elif action == "execute_task":
             return _execute_task(args)
+        elif action.startswith("proactive_"):
+            # Proactive tasks use run_skill
+            return _execute_proactive_task(action, args)
         else:
             return {
                 "ok": False,
@@ -185,3 +188,47 @@ def execute_and_log(
         "action": action,
         "execution_result": result,
     }
+
+
+def _execute_proactive_task(action: str, args: Dict[str, Any]) -> Dict[str, Any]:
+    """Proactiveタスクを実行
+    
+    proactive_exploration, proactive_maintenance, proactive_improvement を処理
+    """
+    from runner.orchestrator import run_skill_with_chain
+    
+    skill = args.get("skill")
+    query = args.get("query")
+    context = args.get("context", {})
+    
+    if not skill or not query:
+        return {
+            "ok": False,
+            "status": "missing_skill_or_query",
+            "action": action,
+        }
+    
+    task = {
+        "skill": skill,
+        "query": query,
+        "context": context,
+        "source": "proactive",
+        "proactive_action": action,
+    }
+    
+    try:
+        result = run_skill_with_chain(task)
+        return {
+            "ok": True,
+            "status": "executed",
+            "action": action,
+            "skill": skill,
+            "result": result,
+        }
+    except Exception as e:
+        return {
+            "ok": False,
+            "status": "execution_failed",
+            "action": action,
+            "error": str(e),
+        }
