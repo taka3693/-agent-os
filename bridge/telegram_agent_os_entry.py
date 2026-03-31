@@ -492,6 +492,7 @@ def handle_proactive_approval(text: str) -> Dict[str, Any]:
         now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         
         try:
+            # 承認のみ先に実行（auto_execute=False）
             result = apply_approval_decision(
                 state_root=state_root,
                 timestamp=now,
@@ -499,17 +500,52 @@ def handle_proactive_approval(text: str) -> Dict[str, Any]:
                 decision=decision_value,
                 reason=f"Telegram: {decision}",
                 source="telegram",
-                auto_execute=True,
+                auto_execute=False,  # 承認のみ、実行は後で
             )
             
-            if result.get("ok"):
-                exec_result = result.get("execution", {}).get("execution_result", {})
-                status = exec_result.get("status", "unknown")
-                reply = f"✅ {decision}: {fingerprint}\n実行結果: {status}"
-            else:
-                reply = f"❌ {decision} 失敗: {result.get('status', 'unknown')}"
+            if not result.get("ok"):
+                return {
+                    "ok": False,
+                    "mode": "proactive_approval", 
+                    "reply_text": f"❌ {decision} 失敗: {result.get('status', 'unknown')}",
+                }
             
-            return {"ok": result.get("ok", False), "mode": "proactive_approval", "reply_text": reply}
+            # バックグラウンドで実行をスケジュール
+            if decision_value == "approved":
+                import threading
+                from ops.approval_executor import execute_and_log
+                
+                # 承認キューから取得した情報で実行
+                queue_file = state_root / "approval_decisions.jsonl"
+                action = None
+                args = None
+                
+                # 直近の承認から情報を取得
+                for line in reversed(queue_file.read_text().strip().split("\n")):
+                    if line.strip():
+                        item = json.loads(line)
+                        if item.get("fingerprint") == fingerprint:
+                            action = item.get("action")
+                            args = item.get("args")
+                            break
+                
+                if action and args:
+                    def run_async():
+                        try:
+                            execute_and_log(state_root, fingerprint, action, args)
+                        except Exception as e:
+                            pass  # ログに記録される
+                    
+                    thread = threading.Thread(target=run_async, daemon=True)
+                    thread.start()
+                    
+                    reply = f"✅ {decision}: {fingerprint}\n⏳ バックグラウンドで実行中..."
+                else:
+                    reply = f"✅ {decision}: {fingerprint}\n⚠️ 実行情報が見つかりません"
+            else:
+                reply = f"✅ {decision}: {fingerprint}"
+            
+            return {"ok": True, "mode": "proactive_approval", "reply_text": reply}
         
         except Exception as e:
             return {
