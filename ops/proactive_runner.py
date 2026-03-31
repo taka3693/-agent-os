@@ -51,6 +51,7 @@ def run_proactive_cycle(
                 # 承認キューに登録
                 append_approval_queue_entry(
                     state_root=state_root,
+                    timestamp=utc_now_iso(),
                     fingerprint=task["id"],
                     action=f"proactive_{task['type']}",
                     args={
@@ -59,6 +60,7 @@ def run_proactive_cycle(
                         "context": task.get("context"),
                         "priority": task.get("priority"),
                     },
+                    policy="proactive_task",
                     reason=f"Proactive: {task.get('context', {}).get('trigger', 'unknown')}",
                     source="proactive_runner",
                 )
