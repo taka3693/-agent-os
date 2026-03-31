@@ -45,6 +45,14 @@ def select_model(skill: str | None) -> str:
     return "zai/glm-5"
 
 
+
+def select_agent(skill: str | None) -> str:
+    """Select OpenClaw agent based on skill type."""
+    # All implementation skills use dev agent
+    if skill in ("research", "decision", "execution", "critique", "experiment", "retrospective"):
+        return "dev"
+    return "main"
+
 def load_task(task_path: Path) -> Dict[str, Any]:
     return json.loads(task_path.read_text())
 
