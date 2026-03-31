@@ -4,12 +4,12 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from ops.approval_queue_reader import (
+from ops.approval_queue import (
     find_pending_approval_by_fingerprint,
     list_pending_approvals,
     load_approval_queue,
 )
-from ops.approval_queue_store import append_approval_queue_entry
+from ops.approval_queue import append_approval_queue_entry
 
 
 class ApprovalQueueReaderTests(unittest.TestCase):

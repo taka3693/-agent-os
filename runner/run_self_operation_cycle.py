@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, Optional
 
 from ops.action_queue import build_action_queue
-from ops.approval_queue_store import append_approval_queue_entry
+from ops.approval_queue import append_approval_queue_entry
 from ops.cooldown_filter import filter_actions_by_cooldown
 from ops.health_evaluator import evaluate_health_snapshot
 from ops.health_snapshot import build_health_snapshot, utc_now_iso

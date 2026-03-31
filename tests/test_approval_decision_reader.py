@@ -4,11 +4,11 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from ops.approval_decision_reader import (
+from ops.approval_decision import (
     list_approval_decisions,
     load_approval_decisions,
 )
-from ops.approval_decision_store import append_approval_decision
+from ops.approval_decision import append_approval_decision
 
 
 class ApprovalDecisionReaderTests(unittest.TestCase):

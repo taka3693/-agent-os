@@ -22,9 +22,9 @@
     "last_attempt_at": null,
     "next_retry_at": null,
     "locked_by": "pool-201845",
-    "locked_at": "2026-03-31T11:21:14Z"
+    "locked_at": "2026-03-31T12:14:25Z"
   },
-  "started_at": "2026-03-31T20:21:14.161223+09:00",
-  "failed_at": "2026-03-31T20:21:14.168258+09:00",
+  "started_at": "2026-03-31T21:14:25.016030+09:00",
+  "failed_at": "2026-03-31T21:14:25.024046+09:00",
   "traceback": "Traceback (most recent call last):\n  File \"/home/milky/agent-os/runner/run_task_once.py\", line 554, in process_one\n    payload = execute_task(task)\n              ^^^^^^^^^^^^^^^^^^\n  File \"/home/milky/agent-os/runner/run_task_once.py\", line 451, in execute_task\n    query = normalize_query(task)\n            ^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/milky/agent-os/runner/run_task_once.py\", line 140, in normalize_query\n    raise RuntimeError(\"query not found in task\")\nRuntimeError: query not found in task\n"
 }

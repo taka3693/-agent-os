@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import unittest
 
-from ops.approval_decision_formatter import format_approval_decisions
+from ops.approval_decision import format_approval_decisions
 
 
 class ApprovalDecisionFormatterTests(unittest.TestCase):

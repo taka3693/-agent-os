@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import unittest
 
-from ops.approval_queue_formatter import format_pending_approvals
+from ops.approval_queue import format_pending_approvals
 
 
 class ApprovalQueueFormatterTests(unittest.TestCase):

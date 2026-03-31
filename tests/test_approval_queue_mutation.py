@@ -4,9 +4,9 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from ops.approval_queue_mutation import remove_pending_approval_by_fingerprint
-from ops.approval_queue_reader import load_approval_queue
-from ops.approval_queue_store import append_approval_queue_entry
+from ops.approval_queue import remove_pending_approval_by_fingerprint
+from ops.approval_queue import load_approval_queue
+from ops.approval_queue import append_approval_queue_entry
 
 
 class ApprovalQueueMutationTests(unittest.TestCase):

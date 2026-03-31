@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from ops.approval_queue_store import append_approval_queue_entry
+from ops.approval_queue import append_approval_queue_entry
 from runner.run_approval_ops import run_approval_ops
 
 

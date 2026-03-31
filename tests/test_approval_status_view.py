@@ -4,9 +4,9 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from ops.approval_decision_store import append_approval_decision
-from ops.approval_queue_store import append_approval_queue_entry
-from ops.approval_status_view import render_approval_status
+from ops.approval_decision import append_approval_decision
+from ops.approval_queue import append_approval_queue_entry
+from ops.approval_status import render_approval_status
 
 
 class ApprovalStatusViewTests(unittest.TestCase):
