@@ -12,6 +12,7 @@ from typing import Any, Dict, List, Optional
 from ops.proactive_observer import observe_system
 from ops.proactive_generator import generate_proactive_tasks
 from ops.approval_queue import append_approval_queue_entry
+from ops.proactive_cooldown import filter_tasks_by_cooldown
 
 
 def utc_now_iso() -> str:
@@ -40,6 +41,14 @@ def run_proactive_cycle(
     
     # 2. タスク生成
     generated_tasks = generate_proactive_tasks(observations)
+    
+    # 2.5. クールダウンフィルタ
+    if not dry_run:
+        before_count = len(generated_tasks)
+        generated_tasks = filter_tasks_by_cooldown(generated_tasks, state_root)
+        filtered_count = before_count - len(generated_tasks)
+    else:
+        filtered_count = 0
     
     # 3. 承認キューに登録（要承認タスクのみ）
     queued_tasks = []
@@ -81,6 +90,7 @@ def run_proactive_cycle(
             "is_idle": observations.get("idle", {}).get("is_idle"),
         },
         "generated_tasks": len(generated_tasks),
+        "filtered_by_cooldown": filtered_count,
         "queued_for_approval": len(queued_tasks),
         "skipped_no_approval": len(skipped_tasks),
         "tasks": generated_tasks,

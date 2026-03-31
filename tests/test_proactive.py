@@ -90,3 +90,25 @@ class TestProactiveRunner(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestProactiveCooldown(unittest.TestCase):
+    def test_filter_allows_first_task(self):
+        from ops.proactive_cooldown import filter_tasks_by_cooldown
+        
+        with tempfile.TemporaryDirectory() as tmpdir:
+            state_root = Path(tmpdir)
+            tasks = [{"type": "exploration", "id": "test-1", "created_at": "2026-01-01T00:00:00Z"}]
+            
+            filtered = filter_tasks_by_cooldown(tasks, state_root)
+            self.assertEqual(len(filtered), 1)
+    
+    def test_should_generate_no_history(self):
+        from ops.proactive_cooldown import should_generate
+        
+        with tempfile.TemporaryDirectory() as tmpdir:
+            state_root = Path(tmpdir)
+            result = should_generate("exploration", state_root)
+            
+            self.assertTrue(result["allowed"])
+            self.assertEqual(result["reason"], "no_recent_tasks")
