@@ -63,6 +63,30 @@ def cmd_fixes(args):
     return 0
 
 
+
+def cmd_llm(args):
+    """LLMを使った自己改善サイクル"""
+    from learning.llm_fix_proposer import run_llm_improvement_cycle
+    
+    result = run_llm_improvement_cycle(dry_run=args.dry_run, max_fixes=args.max)
+    
+    prefix = "[DRY RUN] " if args.dry_run else ""
+    print(f"{prefix}LLM Self-Improvement Cycle")
+    print(f"  Issues analyzed: {result.get('issues_analyzed', 0)}")
+    print(f"  Fixes generated: {result['fixes_generated']}")
+    
+    for fix in result.get("fixes", []):
+        print(f"\n  === Fix ({fix.get('generated_by', 'unknown')}) ===")
+        print(f"  Type: {fix.get('fix_type', 'N/A')}")
+        print(f"  Priority: {fix.get('priority', 'N/A')}")
+        print(f"  Analysis: {fix.get('analysis', 'N/A')[:100]}...")
+        
+        for change in fix.get("changes", [])[:2]:
+            print(f"  → {change.get('file', 'N/A')}: {change.get('description', 'N/A')[:50]}")
+    
+    return 0
+
+
 def main():
     parser = argparse.ArgumentParser(description="Self-Improvement System")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -79,6 +103,12 @@ def main():
     # fixes
     fixes_parser = subparsers.add_parser("fixes", help="Show pending fixes")
     fixes_parser.set_defaults(func=cmd_fixes)
+    
+    # llm
+    llm_parser = subparsers.add_parser("llm", help="Run LLM-powered improvement cycle")
+    llm_parser.add_argument("--dry-run", action="store_true")
+    llm_parser.add_argument("--max", type=int, default=3, help="Max fixes to generate")
+    llm_parser.set_defaults(func=cmd_llm)
     
     args = parser.parse_args()
     sys.exit(args.func(args))
