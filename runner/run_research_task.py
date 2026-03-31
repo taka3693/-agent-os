@@ -25,12 +25,23 @@ def now_iso() -> str:
 
 
 def select_model(skill: str | None) -> str:
-    if skill in ("research", "decision"):
-        return "zai/glm-5"
-    if skill in ("execution", "critique"):
-        return "zai/glm-5"  # GLM-5 for cost efficiency
+    """Select model based on skill type (Phase 1: skill-based mapping).
+    
+    Cost strategy:
+    - GLM-5: main implementation (low cost)
+    - Kimi-k2.5: parallel subtasks, critique (low cost)
+    - Opus-4-5: architecture, deep analysis (high cost, use sparingly)
+    - Codex/GPT-5.4: debugging (reserved for explicit debug tasks)
+    """
+    # High-value analysis only
     if skill == "retrospective":
-        return "anthropic/claude-opus-4-5"  # Opus for deep analysis
+        return "anthropic/claude-opus-4-5"
+    
+    # Parallel-friendly tasks
+    if skill in ("critique", "experiment"):
+        return "openrouter/moonshotai/kimi-k2.5"
+    
+    # Default: cost-effective GLM-5
     return "zai/glm-5"
 
 
