@@ -22,6 +22,15 @@ from typing import Any, Callable, Dict, List, Optional
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+# Learning policy integration
+try:
+    from learning.action_policy import apply_policies_to_action
+    LEARNING_ENABLED = True
+except ImportError:
+    LEARNING_ENABLED = False
+    def apply_policies_to_action(*args, **kwargs):
+        return {"allowed": True, "modifications": [], "warnings": []}
+
 from runner.state_merge import (
     merge_task_states,
     bump_revision,
@@ -544,6 +553,22 @@ def run_skill_with_chain(
     
     task = dict(task)
     task = _ensure_budget(task)
+    
+    # Apply learned policies
+    if LEARNING_ENABLED:
+        skill_name = task.get("selected_skill", task.get("skill", "research"))
+        target = task.get("target_area", skill_name)
+        policy_result = apply_policies_to_action("execute", target, task)
+        
+        # Log warnings from policies
+        for warning in policy_result.get("warnings", []):
+            task.setdefault("policy_warnings", []).append(warning)
+        
+        # Apply modifications
+        for mod in policy_result.get("modifications", []):
+            if mod["type"] == "extra_validation":
+                task["require_extra_validation"] = True
+    
     if budget and isinstance(budget, dict):
         for k, v in budget.items():
             task["budget"][k] = v
