@@ -1,2 +1,0 @@
-{"ts": "2026-03-11T23:00:48+0900", "event": "task_failed", "task_id": "task-session-test123", "target_basename": "foo.jsonl", "ok": false, "error": "session not found: foo.jsonl"}
-{"ts": "2026-03-11T23:10:06+0900", "event": "task_failed", "task_id": "task-session-test123", "target_basename": "foo.jsonl", "ok": false, "error": "session not found: foo.jsonl"}
