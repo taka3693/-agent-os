@@ -34,5 +34,14 @@
   "error": "FileExistsError: file already exists; use aos write! to overwrite: notes/overwrite_guard.txt",
   "artifacts": [],
   "run_log_path": "/home/milky/agent-os/state/runs/run-20260310T052444630574Z-5bd3d1-task-20260310-052444-630157-8bb1de.json",
-  "operation_count": 0
+  "operation_count": 0,
+  "schedule": {
+    "run_at": null,
+    "retry_count": 0,
+    "max_retries": 3,
+    "last_attempt_at": null,
+    "next_retry_at": null,
+    "locked_by": "pool-201845",
+    "locked_at": "2026-03-31T11:21:34Z"
+  }
 }

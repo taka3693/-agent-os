@@ -1,0 +1,10 @@
+{
+  "task_id": "task-20260329000125",
+  "selected_skill": "decision",
+  "selected_skills": [
+    "execution",
+    "critique"
+  ],
+  "status": "completed",
+  "query": "audit smoke after rename"
+}

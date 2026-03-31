@@ -1,0 +1,6 @@
+この会話はコンテキスト肥大を避けるため新しいスレッドへ移行する。以下を前提に継続せよ。
+- active_session: 555be143-3a24-47e9-b251-a3adc43b1ea4.jsonl
+- active_bytes: 3645999
+- rotation_level: critical
+- current_health_status: critical
+- 直近の目的と次アクションを短く整理して再開すること。

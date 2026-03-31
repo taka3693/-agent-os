@@ -1,0 +1,19 @@
+{
+  "week_start": "2026-03-24",
+  "week_end": "2026-03-30",
+  "primary_goal": "受託獲得",
+  "secondary_goals": [
+    "AgentOS完成度向上",
+    "OpenClawハーネス安定化"
+  ],
+  "success_criteria": {
+    "受託獲得": "1件以上の提案送付",
+    "AgentOS完成度向上": "CPT項目A-D完了",
+    "OpenClawハーネス安定化": "Session Guardian稼働"
+  },
+  "constraints": [
+    "Opus使用は1日5-10回まで",
+    "長時間タスクは自動アーカイブ対象"
+  ],
+  "updated_at": "2026-03-25T03:45:00"
+}

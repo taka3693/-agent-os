@@ -1,0 +1,10 @@
+{
+  "task_id": "task-20260328235016",
+  "selected_skill": "decision",
+  "selected_skills": [
+    "execution",
+    "critique"
+  ],
+  "status": "completed",
+  "query": "post-schema-unify smoke"
+}

@@ -1,0 +1,38 @@
+{
+  "ok": true,
+  "repo": "taka3693/-agent-os",
+  "branch": "test/delete-guard",
+  "base": "main",
+  "risk_level": "high",
+  "changed_files": [
+    "config/merge_policy.json",
+    "tools/approve_pr.py",
+    "tools/pr_gate.py"
+  ],
+  "diff_summary": {
+    "files": 3,
+    "additions": 547,
+    "deletions": 0
+  },
+  "checks": {
+    "syntax": "unknown",
+    "tests": "unknown",
+    "freshness": "unknown"
+  },
+  "merge_recommendation": "hard_block",
+  "pr_title": "Update config/merge_policy.json",
+  "pr_body": "## Summary\n\n### Changed Files\n- config/merge_policy.json\n- tools/approve_pr.py\n- tools/pr_gate.py\n\n### Diff Summary\n- Files: 3\n- Additions: +547\n- Deletions: -0\n\n### Risk Assessment\n- Risk Level: **HIGH**\n",
+  "pr_url": "https://github.com/taka3693/-agent-os/compare/main...test/delete-guard",
+  "create_pr_command": "gh pr create --title \"Update config/merge_policy.json\" --body \"## Summary\\n\\n### Changed Files\\n- config/merge_policy.json\\n- tools/approve_pr.py\\n- tools/pr_gate.py\\n\\n### Diff Summary\\n- Files: 3\\n- Additions: +547\\n- Deletions: -0\\n\\n### Risk Assessment\\n- Risk Level: **HIGH**\\n\" --base main",
+  "manual_review_checklist": [
+    "- [ ] コードレビュー完了",
+    "- [ ] 動作確認完了",
+    "- [ ] テスト実行（必要時）"
+  ],
+  "blocked_deletions": [
+    "tools/approve_pr.py"
+  ],
+  "status": "pending_approval",
+  "created_at": "2026-03-23T13:04:15.493872",
+  "state_file": "/home/milky/agent-os/state/pr_gate/test_delete-guard_20260323_130415.json"
+}

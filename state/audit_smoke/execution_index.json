@@ -1,0 +1,23 @@
+[
+  {
+    "task_id": "smoke-task-1",
+    "ts": "2026-03-29T01:00:00+09:00",
+    "mode": "router",
+    "status": "completed",
+    "action": null,
+    "selected_skill": null,
+    "selected_skills": [
+      "router",
+      "execute",
+      "heal",
+      "audit"
+    ],
+    "query": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx...<truncated>",
+    "auto_heal_triggered": false,
+    "state_anomaly_count": 2,
+    "snapshot_anomaly_count": 1,
+    "full_path": "state/audit_smoke/execution_full/smoke-task-1.json",
+    "compact_summary": "ok",
+    "visual_summary": "ok"
+  }
+]

@@ -1,0 +1,43 @@
+{
+  "ok": true,
+  "repo": "taka3693/-agent-os",
+  "branch": "fix/entrypoint-input-validation",
+  "base": "main",
+  "risk_level": "high",
+  "changed_files": [
+    "tools/entrypoint.py"
+  ],
+  "diff_summary": {
+    "files": 1,
+    "additions": 16,
+    "deletions": 1
+  },
+  "checks": {
+    "syntax": "unknown",
+    "tests": "unknown",
+    "freshness": "unknown"
+  },
+  "merge_recommendation": "manual_approval_required",
+  "pr_title": "fix: update tools/entrypoint.py",
+  "pr_body": "## Summary\n\n### Changed Files\n- tools/entrypoint.py\n\n### Diff Summary\n- Files: 1\n- Additions: +16\n- Deletions: -1\n\n### Risk Assessment\n- Risk Level: **HIGH**\n",
+  "pr_url": "https://github.com/taka3693/-agent-os/compare/main...fix/entrypoint-input-validation",
+  "create_pr_command": "gh pr create --title \"fix: update tools/entrypoint.py\" --body \"## Summary\\n\\n### Changed Files\\n- tools/entrypoint.py\\n\\n### Diff Summary\\n- Files: 1\\n- Additions: +16\\n- Deletions: -1\\n\\n### Risk Assessment\\n- Risk Level: **HIGH**\\n\" --base main",
+  "manual_review_checklist": [
+    "- [ ] コードレビュー完了",
+    "- [ ] 動作確認完了",
+    "- [ ] テスト実行（必要時）",
+    "",
+    "### Protected Paths Review",
+    "- [ ] 影響範囲の確認",
+    "- [ ] 後方互換性の確認",
+    "- [ ] セキュリティ影響の確認",
+    "- Changed protected files: tools/entrypoint.py"
+  ],
+  "pr_created": false,
+  "pr_command_output": "",
+  "error": "gh pr create failed",
+  "pr_command_stderr": "pull request create failed: GraphQL: Head sha can't be blank, Base sha can't be blank, No commits between main and origin/fix/entrypoint-input-validation, Head ref must be a branch (createPullRequest)\n",
+  "status": "pending_approval",
+  "created_at": "2026-03-23T12:26:42.231030",
+  "state_file": "/home/milky/agent-os/state/pr_gate/fix_entrypoint-input-validation_20260323_122642.json"
+}

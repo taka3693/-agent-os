@@ -1,0 +1,11 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-7.4.4, pluggy-1.4.0 -- /usr/bin/python3
+cachedir: .pytest_cache
+rootdir: /home/milky/agent-os
+collecting ... collected 3 items
+
+tests/test_step73_json_batch_router.py::test_step73_validate_only_with_valid_command PASSED [ 33%]
+tests/test_step73_json_batch_router.py::test_step73_execute_help_command PASSED [ 66%]
+tests/test_step73_json_batch_router.py::test_step73_router_command_current_behavior PASSED [100%]
+
+============================== 3 passed in 0.04s ===============================

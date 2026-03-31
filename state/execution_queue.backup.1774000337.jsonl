@@ -1,0 +1,3 @@
+{"action_type": "write", "payload": {"path": "/etc/passwd", "content": "test"}, "idempotency_key": "test-blocked-001", "fingerprint": "dangerous-write-test", "status": "blocked", "execution_id": "exec-test-blocked-001", "attempt": 0}
+{"action_type": "write", "payload": {"path": "/etc/passwd", "content": "test"}, "idempotency_key": "test-blocked-002", "fingerprint": "dangerous-write-test", "status": "blocked", "execution_id": "exec-test-blocked-002", "attempt": 0}
+{"action_type": "write", "payload": {"path": "/etc/passwd", "content": "test"}, "idempotency_key": "test-blocked-003", "fingerprint": "test-blocked", "status": "blocked", "execution_id": "exec-blocked-003", "attempt": 0}

@@ -15,7 +15,16 @@
   },
   "result": null,
   "error": "RuntimeError: query not found in task",
-  "started_at": "2026-03-10T17:35:28.919909+09:00",
-  "failed_at": "2026-03-10T17:35:28.920063+09:00",
-  "traceback": "Traceback (most recent call last):\n  File \"/home/milky/agent-os/runner/run_task_once.py\", line 161, in process_one\n    payload = execute_task(task)\n              ^^^^^^^^^^^^^^^^^^\n  File \"/home/milky/agent-os/runner/run_task_once.py\", line 130, in execute_task\n    query = normalize_query(task)\n            ^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/milky/agent-os/runner/run_task_once.py\", line 101, in normalize_query\n    raise RuntimeError(\"query not found in task\")\nRuntimeError: query not found in task\n"
+  "started_at": "2026-03-31T20:21:38.475261+09:00",
+  "failed_at": "2026-03-31T20:21:38.483639+09:00",
+  "traceback": "Traceback (most recent call last):\n  File \"/home/milky/agent-os/runner/run_task_once.py\", line 554, in process_one\n    payload = execute_task(task)\n              ^^^^^^^^^^^^^^^^^^\n  File \"/home/milky/agent-os/runner/run_task_once.py\", line 451, in execute_task\n    query = normalize_query(task)\n            ^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/milky/agent-os/runner/run_task_once.py\", line 140, in normalize_query\n    raise RuntimeError(\"query not found in task\")\nRuntimeError: query not found in task\n",
+  "schedule": {
+    "run_at": null,
+    "retry_count": 0,
+    "max_retries": 3,
+    "last_attempt_at": null,
+    "next_retry_at": null,
+    "locked_by": "pool-201845",
+    "locked_at": "2026-03-31T11:21:38Z"
+  }
 }

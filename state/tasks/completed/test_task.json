@@ -1,0 +1,57 @@
+{
+  "task_id": "test_task",
+  "type": "execution",
+  "approval_required": false,
+  "approved": false,
+  "execution": {
+    "actions": [
+      {
+        "action_id": "git.status_repo",
+        "args": {
+          "repo_path": "/home/milky/agent-os"
+        }
+      },
+      {
+        "action_id": "service.status_openclaw_gateway",
+        "args": {}
+      }
+    ]
+  },
+  "args": {},
+  "result": {
+    "ok": true,
+    "skill": "execution",
+    "query": "",
+    "summary": "入力内容を実行可能な最小手順へ分解した。",
+    "output": "最小の実行計画",
+    "steps": [
+      "対象・目的・完了条件を書く。",
+      "最小の作業単位に分解する。",
+      "上から順に1つずつ実行する。",
+      "完了後、検証コマンドで裏取りする。"
+    ],
+    "verification": {
+      "method": "manual_check",
+      "commands": [],
+      "checklist": [
+        "期待した結果が得られたか",
+        "副作用がないか",
+        "元に戻せる状態か"
+      ]
+    },
+    "notes": [
+      "対象を1つに限定する",
+      "出力物を先に決める",
+      "完了条件を明示する",
+      "実行順序を固定する",
+      "完了後は必ず裏取りする"
+    ]
+  },
+  "status": "completed",
+  "started_at": "2026-03-27T05:54:51+00:00",
+  "completed_at": "2026-03-27T05:54:51+00:00",
+  "error": null,
+  "artifacts": [],
+  "run_log_path": null,
+  "operation_count": 0
+}

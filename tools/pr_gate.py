@@ -141,6 +141,9 @@ def detect_blocked_deletions(base: str, branch: str):
                 continue
             status, path = parts
             if status == "D" and (path.startswith("tools/") or path.startswith("config/")):
+                # Skip .bak files - they are safe to delete
+                if ".bak" in path:
+                    continue
                 blocked.append(path)
 
     # ② working tree diff（ここが重要）
@@ -156,6 +159,9 @@ def detect_blocked_deletions(base: str, branch: str):
             if line.startswith(" D "):
                 path = line[3:].strip()
                 if path.startswith("tools/") or path.startswith("config/"):
+                    # Skip .bak files - they are safe to delete
+                    if ".bak" in path:
+                        continue
                     blocked.append(path)
 
     return sorted(set(blocked))

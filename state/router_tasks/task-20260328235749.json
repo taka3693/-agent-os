@@ -1,0 +1,10 @@
+{
+  "task_id": "task-20260328235749",
+  "selected_skill": "decision",
+  "selected_skills": [
+    "execution",
+    "critique"
+  ],
+  "status": "completed",
+  "query": "snapshot self repair smoke"
+}

@@ -1,0 +1,25 @@
+{
+  "task_id": "task-execution-inline",
+  "selected_skill": "execution",
+  "selected_skills": [
+    "execution",
+    "critique"
+  ],
+  "route_reason": "force_execution",
+  "goal_type": "exploration",
+  "priority": 2,
+  "budget_mode": "low",
+  "needs_comparison": false,
+  "chain_results": [
+    {
+      "skill": "execution",
+      "status": "done"
+    },
+    {
+      "skill": "critique",
+      "status": "error",
+      "error": "name 'critique_result' is not defined"
+    }
+  ],
+  "query": "--force-run"
+}

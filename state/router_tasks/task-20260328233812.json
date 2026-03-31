@@ -1,0 +1,10 @@
+{
+  "task_id": "task-20260328233812",
+  "selected_skill": "decision",
+  "selected_skills": [
+    "execution",
+    "critique"
+  ],
+  "status": "completed",
+  "query": "test deploy forced-heal-2"
+}

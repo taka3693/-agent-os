@@ -1,0 +1,12 @@
+[
+  {
+    "task": "即金化できる販売導線を作る",
+    "status": "done",
+    "output": "executed:即金化できる販売導線を作る"
+  },
+  {
+    "task": "集客チャネルを増やす",
+    "status": "failed",
+    "output": "failed:集客チャネルを増やす"
+  }
+]

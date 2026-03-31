@@ -1,46 +1,84 @@
-# agent-os
+# Agent-OS
 
-Agent-OS Decision System を開発するためのリポジトリです。
+AGI指向の自律エージェントフレームワーク。意思決定、実行、自己改善のサイクルを統合管理します。
 
-## Overview
+## アーキテクチャ
+```
+┌─────────────────────────────────────────────────────────────┐
+│                        Agent-OS                              │
+├─────────────────────────────────────────────────────────────┤
+│  Skills Layer                                                │
+│  ┌──────────┬──────────┬───────────┬──────────┬───────────┐ │
+│  │ Research │ Decision │ Execution │ Critique │Retrospect │ │
+│  └──────────┴──────────┴───────────┴──────────┴───────────┘ │
+├─────────────────────────────────────────────────────────────┤
+│  Runner Layer                                                │
+│  • Orchestrator (Coordinator/Worker pattern)                 │
+│  • Parallel Executor, Task Scheduler, Recovery               │
+│  • Budget Control (subtasks, duration, retries)              │
+├─────────────────────────────────────────────────────────────┤
+│  Ops Layer                                                   │
+│  • Approval Workflow (Human-in-the-Loop)                     │
+│  • Health Monitoring, Cooldown Policy                        │
+├─────────────────────────────────────────────────────────────┤
+│  Integrations                                                │
+│  • Bridge: Telegram, MISO                                    │
+│  • ClawHub, Obsidian                                         │
+└─────────────────────────────────────────────────────────────┘
+```
 
-現在の開発対象は Agent-OS Decision System です。
-意思決定の生成、CLI、FastAPI `/decision`、approval workflow、execution controls、governance tooling を段階的に整備します。
-
-## Setup
-
+## セットアップ
 ```bash
-git clone https://github.com/taka3693/-agent-os.git
-cd -agent-os
+git clone https://github.com/taka3693/agent-os.git
+cd agent-os
+python -m venv .venv
+source .venv/bin/activate
+pip install -e ".[dev]"
 ```
 
-必要な依存関係や実行手順は、実装に合わせて今後追加します。
+## モデル構成
 
-## Usage
+| Role | Model |
+|------|-------|
+| Main | zai/glm-5 |
+| Main Fallback | openrouter/moonshotai/kimi-k2.5 |
+| Subagents | openrouter/moonshotai/kimi-k2.5 |
+| Codex | openai-codex/gpt-5.4 |
 
-現時点では、リポジトリの基盤整備とドキュメント整備を進めています。
-実装が入ったら、CLI と API の利用例をここに追加します。
+## 主要コンポーネント
 
-## Development Workflow
+### Skills
+- **research**: 調査・情報収集
+- **decision**: 意思決定生成
+- **execution**: 計画実行
+- **critique**: 自己批判・評価
+- **experiment**: 実験・検証
+- **retrospective**: 振り返り・学習
 
-- `main` から新しい feature branch を切る
-- 作業後は `git add` → `git commit` → `git push -u origin <branch>`
-- GitHub で Pull Request を作成して merge する
-- merge 後は `git checkout main && git pull` を実行する
+### Runner
+- **orchestrator.py**: Coordinator/Workerパターンによるタスク分解・統合
+- **parallel_executor.py**: 並列実行エンジン
+- **task_scheduler.py**: タスクスケジューリング
+- **task_recovery.py**: 障害復旧
 
-## Status
+### Ops
+- **approval_***: 承認ワークフロー
+- **health_***: ヘルスモニタリング
+- **cooldown_***: 実行間隔制御
 
-現在は README などの基盤整備フェーズです。
-今後、`generate_decision.py` パイプライン、CLI、FastAPI `/decision` などを順次追加します。
-
-## Current Project Structure
-
-現時点の最小構成は以下です。
-
-```text
-.
-├── README.md
-└── .git/
+## テスト
+```bash
+pytest tests/ -v
 ```
 
-今後、Decision System の実装に合わせてファイルやディレクトリを追加します。
+## 開発ワークフロー
+
+1. `main` から feature branch を作成
+2. 実装・テスト
+3. `git push -u origin <branch>`
+4. Pull Request → merge
+5. `git checkout main && git pull`
+
+## License
+
+MIT
