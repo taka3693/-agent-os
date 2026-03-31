@@ -4,11 +4,11 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from ops.approval_ops_api import (
+from ops.approval_facade import (
     apply_pending_approval_text,
     get_pending_approvals_text,
 )
-from ops.approval_queue_store import append_approval_queue_entry
+from ops.approval_queue import append_approval_queue_entry
 
 
 class ApprovalOpsApiTests(unittest.TestCase):

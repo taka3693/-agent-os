@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from ops.approval_decision_store import (
+from ops.approval_decision import (
     approval_decision_log_path,
     append_approval_decision,
 )

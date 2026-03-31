@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from ops.approval_queue_store import (
+from ops.approval_queue import (
     approval_queue_path,
     append_approval_queue_entry,
     load_existing_approval_fingerprints,
