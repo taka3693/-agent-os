@@ -28,9 +28,9 @@ def select_model(skill: str | None) -> str:
     if skill in ("research", "decision"):
         return "zai/glm-5"
     if skill in ("execution", "critique"):
-        return "anthropic/claude-sonnet-4-6"
+        return "zai/glm-5"  # GLM-5 for cost efficiency
     if skill == "retrospective":
-        return "anthropic/claude-opus-4-6"
+        return "anthropic/claude-opus-4-5"  # Opus for deep analysis
     return "zai/glm-5"
 
 
