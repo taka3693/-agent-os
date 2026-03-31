@@ -1,23 +1,60 @@
+# Python
 __pycache__/
 *.py[cod]
-.pytest_cache/
-.venv/
-.brv/
-.backup_*/
-state/
-audit/
-config/
-governance/
-learning/
-ops/
-policy/
-scheduler/
-summary
-*.json
-*.backup.*
-*.broken.*
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
 
-# generated artifacts
-artifacts/
+# Virtual environments
+.venv/
+venv/
+ENV/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+
+# Runtime
+*.log
+runtime_logs/execution_legacy/
+state/tasks/*.json
+!state/tasks/.gitkeep
+
+# Backups (use git history instead)
+*.bak
 *.bak.*
-state/pr_gate/*.json
+.backup_*/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Secrets
+.env
+.env.*
+!.env.example
