@@ -20,6 +20,7 @@ from ops.approval_queue import (
     remove_pending_approval_by_fingerprint,
 )
 from ops.approval_validation import validate_approval_decision_input
+from ops.approval_executor import execute_and_log
 
 
 def approval_decision_log_path(state_root: Path) -> Path:
@@ -102,6 +103,7 @@ def apply_approval_decision(
     decision: str,
     reason: Optional[str] = None,
     source: str = "manual_review",
+    auto_execute: bool = True,
 ) -> Dict[str, Any]:
     valid = validate_approval_decision_input(
         fingerprint=fingerprint,
@@ -131,13 +133,27 @@ def apply_approval_decision(
     )
 
     removal = remove_pending_approval_by_fingerprint(state_root, fingerprint)
-    return {
+
+    result = {
         "ok": True,
         "status": "applied",
         "fingerprint": fingerprint,
         "decision": decision,
         "removed": removal["removed"],
     }
+
+    # 承認された場合、自動実行
+    if decision == "approved" and auto_execute:
+        exec_result = execute_and_log(
+            state_root,
+            fingerprint=fingerprint,
+            action=row["action"],
+            args=row.get("args", {}),
+        )
+        result["execution"] = exec_result
+        result["executed"] = exec_result.get("ok", False)
+
+    return result
 
 
 def apply_approval_decision_payload(
