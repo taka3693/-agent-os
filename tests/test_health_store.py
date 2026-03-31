@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from ops.health_store import (
+from ops.health import (
     append_health_history,
     write_latest_health,
 )

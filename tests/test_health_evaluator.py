@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import unittest
 
-from ops.health_evaluator import evaluate_health_snapshot
+from ops.health import evaluate_health_snapshot
 
 
 class TestHealthEvaluator(unittest.TestCase):

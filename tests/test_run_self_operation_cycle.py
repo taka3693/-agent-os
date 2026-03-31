@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from ops.cooldown_store import mark_emitted
+from ops.cooldown import mark_emitted
 from runner.run_self_operation_cycle import run_self_operation_cycle
 
 

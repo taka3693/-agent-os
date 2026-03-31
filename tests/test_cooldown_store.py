@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from ops.cooldown_store import (
+from ops.cooldown import (
     get_last_emitted_at,
     load_cooldowns,
     mark_emitted,

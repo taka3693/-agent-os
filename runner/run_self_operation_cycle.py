@@ -5,10 +5,10 @@ from typing import Any, Dict, Iterable, Optional
 
 from ops.action_queue import build_action_queue
 from ops.approval_queue import append_approval_queue_entry
-from ops.cooldown_filter import filter_actions_by_cooldown
-from ops.health_evaluator import evaluate_health_snapshot
-from ops.health_snapshot import build_health_snapshot, utc_now_iso
-from ops.health_store import append_health_history, write_latest_health
+from ops.cooldown import filter_actions_by_cooldown
+from ops.health import evaluate_health_snapshot
+from ops.health import build_health_snapshot, utc_now_iso
+from ops.health import append_health_history, write_latest_health
 from ops.hygiene_recommendations import build_hygiene_recommended_actions
 from ops.policy import decide_recommended_action
 from ops.session_hygiene import select_archive_candidates

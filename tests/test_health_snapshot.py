@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from ops.health_snapshot import build_health_snapshot, count_task_files
+from ops.health import build_health_snapshot, count_task_files
 
 
 class TestHealthSnapshot(unittest.TestCase):
