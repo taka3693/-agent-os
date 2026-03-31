@@ -4,8 +4,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from ops.cooldown_filter import filter_actions_by_cooldown
-from ops.cooldown_store import mark_emitted
+from ops.cooldown import filter_actions_by_cooldown
+from ops.cooldown import mark_emitted
 
 
 class TestCooldownFilter(unittest.TestCase):

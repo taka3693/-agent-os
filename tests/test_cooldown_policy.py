@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import unittest
 
-from ops.cooldown_policy import should_emit_by_cooldown
+from ops.cooldown import should_emit_by_cooldown
 
 
 class TestCooldownPolicy(unittest.TestCase):
