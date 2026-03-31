@@ -74,7 +74,7 @@ class TestApprovalDecisionWithExecution(unittest.TestCase):
             self.state_root,
             timestamp=datetime.now(timezone.utc).isoformat(),
             fingerprint="exec_test_001",
-            decision="approve",
+            decision="approved",
             auto_execute=True,
         )
 
@@ -101,7 +101,7 @@ class TestApprovalDecisionWithExecution(unittest.TestCase):
             self.state_root,
             timestamp=datetime.now(timezone.utc).isoformat(),
             fingerprint="reject_test_001",
-            decision="reject",
+            decision="rejected",
         )
 
         self.assertTrue(result["ok"])
