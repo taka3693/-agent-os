@@ -435,11 +435,8 @@ def summarize_task(task: Dict[str, Any]) -> Dict[str, Any]:
     # If MISO is enabled, return minimal info (MISO message is the main output)
     if MISO_ENABLED:
         if status == "completed":
-            return {
-                "ok": True,
-                "mode": "execution",
-                "telegram_reply_text": "",  # Empty = no additional message needed
-            }
+            # Return None to suppress any output - MISO message is sufficient
+            return None
         elif status == "failed":
             return {
                 "ok": False,
@@ -636,6 +633,9 @@ def handle_message(message_text: str) -> Dict[str, Any]:
         task = run_execution_task_run_task(task_path)
 
     out = summarize_task(task)
+    if out is None:
+        # MISO handled the output, return minimal success indicator
+        return {"ok": True, "mode": "miso", "miso_only": True}
     out["task_path"] = str(task_path)
     return out
 
