@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 import json
+import logging
 import os
 import sys
 from datetime import datetime, timezone
@@ -11,6 +12,20 @@ from typing import Any, Dict, List, Optional
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
+
+# Configure logging
+LOG_DIR = PROJECT_ROOT / "miso" / "logs"
+LOG_DIR.mkdir(parents=True, exist_ok=True)
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    handlers=[
+        logging.FileHandler(LOG_DIR / f"bridge_{datetime.now().strftime('%Y%m%d')}.log"),
+        logging.StreamHandler()
+    ]
+)
+logger = logging.getLogger(__name__)
 
 from miso.formatter import (
     format_mission_message,
@@ -26,6 +41,22 @@ from miso.telegram_hooks import (
     make_retry_buttons,
 )
 from runner.run_route_task import apply_approval_decision
+
+
+# Cost tracking
+def log_mission_cost(
+    mission_id: str,
+    model: str,
+    input_tokens: int,
+    output_tokens: int,
+) -> Dict[str, Any]:
+    """Log mission cost (imported dynamically to avoid circular import)"""
+    try:
+        from miso.cost_tracker import calculate_cost, log_cost
+        cost = calculate_cost(model, input_tokens, output_tokens)
+        return log_cost(model, input_tokens, output_tokens, mission_id, cost)
+    except Exception:
+        return {"ok": False, "error": "cost tracking failed"}
 
 # Mission state storage
 MISO_STATE_DIR = PROJECT_ROOT / "state" / "miso"
@@ -68,7 +99,7 @@ def start_mission(
     message = format_mission_message(
         mission_name=mission_name,
         goal=goal,
-        agents=[{"name": a.get("name", f"担当{i+1}"), "status": "INIT"} for i, a in enumerate(agents)],
+        agents=[{"name": (a if isinstance(a, str) else a.get("name", f"担当{i+1}")), "status": "INIT"} for i, a in enumerate(agents)],
         state="INIT",
         elapsed="0m",
         next_action="エージェント起動中",
@@ -94,12 +125,15 @@ def start_mission(
         "chat_id": chat_id,
         "message_id": message_id,
         "state": "INIT",
-        "agents": [{"name": a.get("name", f"担当{i+1}"), "status": "INIT", "label": a.get("label")} for i, a in enumerate(agents)],
+        "agents": [{"name": (a if isinstance(a, str) else a.get("name", f"担当{i+1}")), "status": "INIT", "label": (None if isinstance(a, str) else a.get("label"))} for i, a in enumerate(agents)],
         "created_at": utc_now(),
         "updated_at": utc_now(),
     }
     _save_mission(mission_id, mission_state)
-    
+
+    # Log mission start for cost tracking (0 tokens initially)
+    log_mission_cost(mission_id, "unknown", 0, 0)
+
     return {"ok": True, "message_id": message_id, "mission_id": mission_id}
 
 
@@ -112,7 +146,7 @@ def update_mission(
 ) -> Dict[str, Any]:
     """
     Update an existing mission.
-    
+
     1. Load mission state
     2. Update fields
     3. Edit Telegram message
@@ -121,7 +155,7 @@ def update_mission(
     mission = _load_mission(mission_id)
     if not mission:
         return {"ok": False, "error": "mission not found"}
-    
+
     # Update fields
     old_state = mission.get("state")
     if state:
@@ -133,14 +167,14 @@ def update_mission(
     if elapsed:
         mission["elapsed"] = elapsed
     mission["updated_at"] = utc_now()
-    
+
     # Calculate elapsed if not provided
     if not elapsed:
         created = datetime.fromisoformat(mission["created_at"].replace("Z", "+00:00"))
         now = datetime.now(timezone.utc)
         minutes = int((now - created).total_seconds() / 60)
         elapsed = f"{minutes}m"
-    
+
     # Format updated message
     message = format_mission_message(
         mission_name=mission["mission_name"],
@@ -150,22 +184,76 @@ def update_mission(
         elapsed=elapsed,
         next_action=mission.get("next_action", ""),
     )
-    
+
     # Edit message
     chat_id = mission["chat_id"]
     message_id = mission["message_id"]
     result = edit_message(chat_id=chat_id, message_id=message_id, message=message)
-    
+
     # Update reaction if state changed
     new_state = mission.get("state")
     if old_state != new_state:
         new_reaction = get_reaction_for_state(new_state)
         react_to_message(chat_id=chat_id, message_id=message_id, emoji=new_reaction)
-    
+
     # Save state
     _save_mission(mission_id, mission)
-    
+
     return {"ok": True, "mission_id": mission_id, "state": new_state}
+
+
+def update_agent_status(
+    mission_id: str,
+    agent_name: str,
+    status: str,
+    detail: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    Update status of a specific agent in a mission.
+
+    Args:
+        mission_id: Mission identifier
+        agent_name: Name of the agent to update
+        status: New status (INIT, RUNNING, DONE, ERROR, BLOCKED)
+        detail: Optional detail message for the agent
+
+    Returns:
+        Dict with ok, mission_id, and updated agents list
+    """
+    mission = _load_mission(mission_id)
+    if not mission:
+        return {"ok": False, "error": "mission not found"}
+
+    agents = mission.get("agents", [])
+    agent_found = False
+
+    # Find and update the agent
+    for agent in agents:
+        if agent.get("name") == agent_name:
+            agent["status"] = status
+            if detail is not None:
+                agent["detail"] = detail
+            agent_found = True
+            logger.info(f"Updated agent {agent_name} status to {status}")
+            break
+
+    if not agent_found:
+        logger.warning(f"Agent {agent_name} not found in mission {mission_id}")
+        return {"ok": False, "error": f"agent not found: {agent_name}"}
+
+    # Update mission with new agent states
+    result = update_mission(
+        mission_id=mission_id,
+        agents=agents,
+    )
+
+    return {
+        "ok": True,
+        "mission_id": mission_id,
+        "agent_name": agent_name,
+        "status": status,
+        "agents": agents,
+    }
 
 
 def request_approval(
@@ -289,25 +377,49 @@ def complete_mission(
     mission_id: str,
     summary: str = "",
     artifacts: Optional[List[str]] = None,
+    model: str = "unknown",
+    input_tokens: int = 0,
+    output_tokens: int = 0,
 ) -> Dict[str, Any]:
     """
     Mark mission as COMPLETE.
     """
-    # Load mission to update agent statuses
+    # Load mission first to get chat_id for context check
     mission = _load_mission(mission_id)
+
+    # Log cost if tokens are provided
+    if input_tokens > 0 or output_tokens > 0:
+        log_mission_cost(mission_id, model, input_tokens, output_tokens)
+
+    # Update agent statuses
     agents = None
     if mission:
         agents = mission.get("agents", [])
         for a in agents:
             a["status"] = "COMPLETE"
             a["detail"] = "完了"
-    
-    return update_mission(
+
+    # Update mission
+    result = update_mission(
         mission_id=mission_id,
         state="COMPLETE",
         agents=agents,
         next_action=summary or "完了",
     )
+
+    # Check context health after mission completion (if chat_id is available)
+    if mission and mission.get("chat_id"):
+        try:
+            from miso.context_manager import send_context_warning
+
+            # Use a default session_id for context tracking
+            session_id = mission.get("session_id", "main")
+            send_context_warning(session_id, mission["chat_id"])
+        except Exception:
+            # Context check is optional, don't fail if it errors
+            pass
+
+    return result
 
 
 def fail_mission(
@@ -350,7 +462,70 @@ def fail_mission(
     
     # Update reaction to ❌
     react_to_message(chat_id=chat_id, message_id=message_id, emoji="❌")
-    
+
     _save_mission(mission_id, mission)
-    
+
     return {"ok": True, "mission_id": mission_id, "state": "ERROR"}
+
+
+# === CLI Entry Point ===
+def main():
+
+    import argparse
+
+    parser = argparse.ArgumentParser(description="MISO Bridge CLI")
+    parser.add_argument("--json", action="store_true", help="Output JSON")
+    subparsers = parser.add_subparsers(dest="command", required=True)
+
+    # start_mission command
+    start_parser = subparsers.add_parser("start_mission", help="Start a new mission")
+    start_parser.add_argument("--mission-id", "--mission_id", required=True, dest="mission_id", help="Mission ID")
+    start_parser.add_argument("--mission-name", "--mission_name", required=True, dest="mission_name", help="Mission name")
+    start_parser.add_argument("--goal", required=True, help="Mission goal")
+    start_parser.add_argument("--chat-id", "--chat_id", required=True, dest="chat_id", help="Telegram chat ID")
+    start_parser.add_argument("--agents", required=True, help="Agents JSON string")
+
+    # complete_mission command
+    complete_parser = subparsers.add_parser("complete_mission", help="Complete a mission")
+    complete_parser.add_argument("--mission-id", "--mission_id", required=True, dest="mission_id", help="Mission ID")
+    complete_parser.add_argument("--summary", default="", help="Mission summary")
+    complete_parser.add_argument("--model", default="unknown", help="Model used")
+    complete_parser.add_argument("--input", type=int, default=0, help="Input tokens")
+    complete_parser.add_argument("--output", type=int, default=0, help="Output tokens")
+
+    # fail_mission command
+    fail_parser = subparsers.add_parser("fail_mission", help="Fail a mission")
+    fail_parser.add_argument("--mission-id", "--mission_id", required=True, dest="mission_id", help="Mission ID")
+    fail_parser.add_argument("--error", required=True, help="Error message")
+
+    args = parser.parse_args()
+
+    result = {}
+
+    if args.command == "start_mission":
+        agents = json.loads(args.agents)
+        result = start_mission(
+            args.mission_id,
+            args.mission_name,
+            args.goal,
+            args.chat_id,
+            agents,
+        )
+    elif args.command == "complete_mission":
+        result = complete_mission(
+            args.mission_id,
+            args.summary,
+            model=args.model,
+            input_tokens=args.input,
+            output_tokens=args.output,
+        )
+    elif args.command == "fail_mission":
+        result = fail_mission(args.mission_id, args.error)
+
+    # Output result as JSON
+    print(json.dumps(result, ensure_ascii=False))
+    sys.exit(0 if result.get("ok") else 1)
+
+
+if __name__ == "__main__":
+    main()

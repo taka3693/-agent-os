@@ -13,6 +13,6 @@ Self-Improvement:
 """
 
 from learning.pattern_extractor import extract_patterns
-from learning.action_policy import get_policy, apply_policy
+from learning.action_policy import load_policies, save_policy, apply_policies_to_action
 from learning.learning_runner import run_learning_cycle
-from learning.self_improve import run_improvement_cycle
+from learning.self_improve import run_self_improvement_cycle

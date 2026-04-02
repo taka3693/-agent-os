@@ -64,3 +64,4 @@
 {"ts": "2026-03-30T08:59:28.377871", "proposal_id": "p-test-1", "candidate": {"dummy": true}, "result": {"passed": true}}
 {"ts": "2026-03-30T09:03:18.274427", "proposal_id": "p-test-1", "candidate": {"dummy": true}, "result": {"passed": true}}
 {"ts": "2026-03-31T16:09:18.940416", "proposal_id": "p-test-1", "candidate": {"dummy": true}, "result": {"passed": true}}
+{"ts": "2026-03-31T21:08:00.231819", "proposal_id": "p-test-1", "candidate": {"dummy": true}, "result": {"passed": true}}
