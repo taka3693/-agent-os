@@ -153,8 +153,10 @@ def run_task_with_miso(
     
     task = load_json(task_path)
     task_id = task.get("id") or task_path.stem
-    task_name = task.get("name", task_id)
-    goal = task.get("goal", task.get("description", task_name))
+    # Use source_text for human-readable names
+    source_text = task.get("meta", {}).get("source_text", "")
+    task_name = source_text if source_text else task.get("name", task_id)
+    goal = source_text if source_text else task.get("goal", task.get("description", task_name))
     
     mission_id = None
     
@@ -169,7 +171,7 @@ def run_task_with_miso(
                 mission_name=task_name,
                 goal=goal,
                 chat_id=miso_chat_id,
-                agents=[{"label": "executor", "status": "starting"}],
+                agents=[{"label": "実行", "name": "実行エージェント", "status": "開始"}],
             )
             task["miso_mission_id"] = mission_id
         except Exception as e:
@@ -185,7 +187,7 @@ def run_task_with_miso(
             update_mission(
                 mission_id=mission_id,
                 state="RUNNING",
-                agents=[{"label": "executor", "status": "executing..."}],
+                agents=[{"label": "実行", "name": "実行エージェント", "status": "処理中..."}],
                 next_action="Processing task",
             )
         except Exception:
@@ -219,7 +221,7 @@ def run_task_with_miso(
             try:
                 complete_mission(
                     mission_id=mission_id,
-                    summary=f"Task {task_name} completed",
+                    summary=f"✓ 完了: {task_name}",
                     artifacts=task.get("artifacts", []),
                 )
             except Exception as e:

@@ -293,9 +293,19 @@ def complete_mission(
     """
     Mark mission as COMPLETE.
     """
+    # Load mission to update agent statuses
+    mission = _load_mission(mission_id)
+    agents = None
+    if mission:
+        agents = mission.get("agents", [])
+        for a in agents:
+            a["status"] = "COMPLETE"
+            a["detail"] = "完了"
+    
     return update_mission(
         mission_id=mission_id,
         state="COMPLETE",
+        agents=agents,
         next_action=summary or "完了",
     )
 
