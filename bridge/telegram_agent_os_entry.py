@@ -426,12 +426,34 @@ def handle_route_approval(message_text: str) -> Dict[str, Any]:
 
 
 def summarize_task(task: Dict[str, Any]) -> Dict[str, Any]:
+    """Return human-readable summary when MISO is enabled, JSON otherwise."""
+    status = task.get("status", "unknown")
+    task_id = task.get("id", "unknown")
+    source_text = task.get("meta", {}).get("source_text", task_id)
+    error = task.get("error")
+    
+    # If MISO is enabled, return minimal info (MISO message is the main output)
+    if MISO_ENABLED:
+        if status == "completed":
+            return {
+                "ok": True,
+                "mode": "execution",
+                "telegram_reply_text": "",  # Empty = no additional message needed
+            }
+        elif status == "failed":
+            return {
+                "ok": False,
+                "mode": "execution",
+                "telegram_reply_text": f"❌ エラー: {error}" if error else "❌ タスク失敗",
+            }
+    
+    # Fallback: return JSON for non-MISO mode
     return {
-        "ok": task.get("status") == "completed",
+        "ok": status == "completed",
         "mode": "execution",
-        "task_id": task.get("id"),
-        "status": task.get("status"),
-        "error": task.get("error"),
+        "task_id": task_id,
+        "status": status,
+        "error": error,
         "operation_count": task.get("operation_count", 0),
         "artifacts": task.get("artifacts", []),
         "run_log_path": task.get("run_log_path"),
