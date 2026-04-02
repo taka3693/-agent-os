@@ -1,0 +1,17 @@
+{
+  "mission_id": "write-test-001",
+  "mission_name": "Write",
+  "goal": "Testing write tool",
+  "chat_id": "6474742983",
+  "message_id": "8144",
+  "state": "INIT",
+  "agents": [
+    {
+      "name": "write",
+      "status": "INIT",
+      "label": null
+    }
+  ],
+  "created_at": "2026-04-02T20:11:12+00:00",
+  "updated_at": "2026-04-02T20:11:12+00:00"
+}

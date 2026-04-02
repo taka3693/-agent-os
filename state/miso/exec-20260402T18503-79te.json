@@ -1,0 +1,18 @@
+{
+  "mission_id": "exec-20260402T18503-79te",
+  "mission_name": "Exec",
+  "goal": "cmd: ps aux | grep -i openclaw | grep -v grep",
+  "chat_id": "6474742983",
+  "message_id": "8088",
+  "state": "ERROR",
+  "agents": [
+    {
+      "name": "exec",
+      "status": "INIT",
+      "label": "tool"
+    }
+  ],
+  "created_at": "2026-04-02T18:50:42+00:00",
+  "updated_at": "2026-04-02T18:50:42+00:00",
+  "error": "Unknown error"
+}

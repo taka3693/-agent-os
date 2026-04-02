@@ -1,0 +1,11 @@
+{"timestamp": "2026-04-02T17:29:24+00:00", "model": "glm-4.7", "input_tokens": 1500, "output_tokens": 500, "total_tokens": 2000, "mission_id": "test-mission-1", "cost_usd": 0.00033}
+{"timestamp": "2026-04-02T17:29:24+00:00", "model": "kimi-k2.5", "input_tokens": 2000, "output_tokens": 800, "total_tokens": 2800, "mission_id": "test-mission-2", "cost_usd": 0.00036}
+{"timestamp": "2026-04-02T17:29:24+00:00", "model": "gpt-5.4", "input_tokens": 500, "output_tokens": 200, "total_tokens": 700, "mission_id": "test-mission-3", "cost_usd": 0.00055}
+{"timestamp": "2026-04-02T18:50:42+00:00", "model": "unknown", "input_tokens": 0, "output_tokens": 0, "total_tokens": 0, "mission_id": "exec-20260402T18503-79te", "session_id": "", "cost_usd": 0.0}
+{"timestamp": "2026-04-02T18:53:42+00:00", "model": "unknown", "input_tokens": 0, "output_tokens": 0, "total_tokens": 0, "mission_id": "exec-20260402T18533-l98w", "session_id": "", "cost_usd": 0.0}
+{"timestamp": "2026-04-02T19:51:41+00:00", "model": "unknown", "input_tokens": 0, "output_tokens": 0, "total_tokens": 0, "mission_id": "test-003", "session_id": "", "cost_usd": 0.0}
+{"timestamp": "2026-04-02T20:02:43+00:00", "model": "unknown", "input_tokens": 0, "output_tokens": 0, "total_tokens": 0, "mission_id": "exec-20260402T20023-1bcx", "session_id": "", "cost_usd": 0.0}
+{"timestamp": "2026-04-02T20:06:48+00:00", "model": "unknown", "input_tokens": 0, "output_tokens": 0, "total_tokens": 0, "mission_id": "exec-20260402T20064-9167", "session_id": "", "cost_usd": 0.0}
+{"timestamp": "2026-04-02T20:10:40+00:00", "model": "unknown", "input_tokens": 0, "output_tokens": 0, "total_tokens": 0, "mission_id": "test-123", "session_id": "", "cost_usd": 0.0}
+{"timestamp": "2026-04-02T20:11:12+00:00", "model": "unknown", "input_tokens": 0, "output_tokens": 0, "total_tokens": 0, "mission_id": "write-test-001", "session_id": "", "cost_usd": 0.0}
+{"timestamp": "2026-04-02T20:14:35+00:00", "model": "unknown", "input_tokens": 0, "output_tokens": 0, "total_tokens": 0, "mission_id": "edit-20260402T20142-sy8o", "session_id": "", "cost_usd": 0.0}

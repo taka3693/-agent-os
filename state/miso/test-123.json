@@ -1,0 +1,11 @@
+{
+  "mission_id": "test-123",
+  "mission_name": "Test Mission",
+  "goal": "Test goal",
+  "chat_id": "6474742983",
+  "message_id": "8143",
+  "state": "INIT",
+  "agents": [],
+  "created_at": "2026-04-02T20:10:40+00:00",
+  "updated_at": "2026-04-02T20:10:40+00:00"
+}

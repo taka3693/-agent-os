@@ -1,0 +1,18 @@
+{
+  "mission_id": "exec-20260402T20023-1bcx",
+  "mission_name": "Exec",
+  "goal": "cmd: journalctl --user -u openclaw-gateway.service -n 5",
+  "chat_id": "6474742983",
+  "message_id": "8127",
+  "state": "ERROR",
+  "agents": [
+    {
+      "name": "exec",
+      "status": "INIT",
+      "label": "tool"
+    }
+  ],
+  "created_at": "2026-04-02T20:02:43+00:00",
+  "updated_at": "2026-04-02T20:02:43+00:00",
+  "error": "Unknown error"
+}

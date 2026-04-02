@@ -1,0 +1,18 @@
+{
+  "mission_id": "edit-20260402T20142-sy8o",
+  "mission_name": "Edit",
+  "goal": "path: /home/milky/work/openclaw-main/tools/mission_orchestrator/miso-runtime/index.js",
+  "chat_id": "6474742983",
+  "message_id": "8155",
+  "state": "ERROR",
+  "agents": [
+    {
+      "name": "edit",
+      "status": "INIT",
+      "label": "tool"
+    }
+  ],
+  "created_at": "2026-04-02T20:14:35+00:00",
+  "updated_at": "2026-04-02T20:14:35+00:00",
+  "error": "Unknown error"
+}

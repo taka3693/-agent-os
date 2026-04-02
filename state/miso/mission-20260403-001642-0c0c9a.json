@@ -1,0 +1,19 @@
+{
+  "mission_id": "mission-20260403-001642-0c0c9a",
+  "mission_name": "aos read ~/agent-os/README.md",
+  "goal": "aos read ~/agent-os/README.md",
+  "chat_id": "6474742983",
+  "message_id": "8011",
+  "state": "COMPLETE",
+  "agents": [
+    {
+      "label": "実行",
+      "name": "実行エージェント",
+      "status": "COMPLETE",
+      "detail": "完了"
+    }
+  ],
+  "created_at": "2026-04-02T15:16:52+00:00",
+  "updated_at": "2026-04-02T15:17:00+00:00",
+  "next_action": "✓ 完了: aos read ~/agent-os/README.md"
+}

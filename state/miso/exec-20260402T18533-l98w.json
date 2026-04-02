@@ -1,0 +1,17 @@
+{
+  "mission_id": "exec-20260402T18533-l98w",
+  "mission_name": "Exec",
+  "goal": "cmd: openclaw gateway restart",
+  "chat_id": "6474742983",
+  "message_id": "8095",
+  "state": "INIT",
+  "agents": [
+    {
+      "name": "exec",
+      "status": "INIT",
+      "label": "tool"
+    }
+  ],
+  "created_at": "2026-04-02T18:53:42+00:00",
+  "updated_at": "2026-04-02T18:53:42+00:00"
+}
