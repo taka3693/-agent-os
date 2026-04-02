@@ -15,9 +15,13 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from router.route_to_task import route_message_to_task
 from runner.run_route_task import apply_approval_decision as apply_route_approval_decision
-from runner.run_execution_task import run_task as run_execution_task_run_task
+from runner.run_execution_task import run_task as run_execution_task_run_task, run_task_with_miso
 from miso.bridge import handle_approval_callback as miso_handle_approval_callback
 
+
+# MISO Integration - set to True to enable mission control reporting
+MISO_ENABLED = True
+MISO_CHAT_ID = "6474742983"
 
 HELP_TEXT = """AgentOS 使い方
 
@@ -604,7 +608,10 @@ def handle_message(message_text: str) -> Dict[str, Any]:
 
     routed = route_message_to_task(message_text)
     task_path = Path(routed["task_path"])
-    task = run_execution_task_run_task(task_path)
+    if MISO_ENABLED:
+        task = run_task_with_miso(task_path, miso_enabled=True, miso_chat_id=MISO_CHAT_ID)
+    else:
+        task = run_execution_task_run_task(task_path)
 
     out = summarize_task(task)
     out["task_path"] = str(task_path)

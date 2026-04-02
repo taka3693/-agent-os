@@ -119,3 +119,108 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
+
+# ---------------------------------------------------------------------------
+# MISO-integrated version
+# ---------------------------------------------------------------------------
+def run_task_with_miso(
+    task_path: Path,
+    miso_enabled: bool = True,
+    miso_chat_id: str = "6474742983",
+) -> Dict[str, Any]:
+    """
+    Run task with MISO mission control reporting.
+    
+    Same as run_task() but sends status updates to Telegram via MISO.
+    """
+    from miso.bridge import (
+        start_mission,
+        update_mission,
+        complete_mission,
+        fail_mission,
+    )
+    
+    task = load_json(task_path)
+    task_id = task.get("id") or task_path.stem
+    task_name = task.get("name", task_id)
+    goal = task.get("goal", task.get("description", task_name))
+    
+    mission_id = None
+    
+    # --- MISO: Start mission ---
+    if miso_enabled:
+        try:
+            result = start_mission(
+                chat_id=miso_chat_id,
+                mission_name=task_name,
+                goal=goal,
+                agents=[{"label": "executor", "status": "starting"}],
+            )
+            mission_id = result.get("mission_id")
+            task["miso_mission_id"] = mission_id
+        except Exception as e:
+            task.setdefault("warnings", []).append(f"MISO start failed: {e}")
+    
+    task["status"] = "running"
+    task["started_at"] = utc_now()
+    save_json(task_path, task)
+    
+    # --- MISO: Running ---
+    if miso_enabled and mission_id:
+        try:
+            update_mission(
+                mission_id=mission_id,
+                state="RUNNING",
+                agents=[{"label": "executor", "status": "executing..."}],
+                next_action="Processing task",
+            )
+        except Exception:
+            pass
+    
+    try:
+        plan = extract_plan(task)
+        result = run_execution(plan=plan, task_id=task_id)
+        
+        task["status"] = "completed"
+        task["completed_at"] = utc_now()
+        task["result"] = result
+        task["error"] = None
+        task["artifacts"] = result.get("artifact_paths", [])
+        task["run_log_path"] = result.get("run_log_path")
+        task["operation_count"] = result.get("operation_count", 0)
+        save_json(task_path, task)
+        
+        # --- MISO: Complete ---
+        if miso_enabled and mission_id:
+            try:
+                complete_mission(
+                    mission_id=mission_id,
+                    summary=f"Task {task_name} completed",
+                    artifacts=task.get("artifacts", []),
+                )
+            except Exception as e:
+                task.setdefault("warnings", []).append(f"MISO complete failed: {e}")
+        
+        return task
+        
+    except Exception as e:
+        payload = parse_runtime_error_payload(e)
+        task["status"] = "failed"
+        task["completed_at"] = utc_now()
+        if payload is not None:
+            task["result"] = payload
+            task["error"] = payload.get("message") or str(e)
+        else:
+            task["result"] = None
+            task["error"] = str(e)
+        save_json(task_path, task)
+        
+        # --- MISO: Error ---
+        if miso_enabled and mission_id:
+            try:
+                fail_mission(mission_id=mission_id, error=task["error"])
+            except Exception:
+                pass
+        
+        return task
