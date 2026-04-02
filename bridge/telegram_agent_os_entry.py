@@ -647,6 +647,14 @@ def main() -> int:
 
     message_text = sys.argv[1]
     result = handle_message(message_text)
+
+    # If MISO handled the output, do not print anything
+    if result and result.get("miso_only"):
+        return 0
+    
+    # If MISO handled the output, dont print anything
+    if result and result.get("miso_only"):
+        return 0
     import json
     print(json.dumps(result, ensure_ascii=False, indent=2))
     return 0 if result.get("ok") else 1
