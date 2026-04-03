@@ -1,0 +1,45 @@
+{
+  "running": false,
+  "started_at": null,
+  "total_tasks_run": 0,
+  "total_errors": 0,
+  "tasks": {
+    "proactive_observer": {
+      "name": "proactive_observer",
+      "cron_expr": "*/15 * * * *",
+      "description": "Run proactive observer cycle",
+      "last_run": null,
+      "run_count": 0,
+      "error_count": 0,
+      "last_error": null
+    },
+    "health_check": {
+      "name": "health_check",
+      "cron_expr": "0 * * * *",
+      "description": "Hourly health check",
+      "last_run": null,
+      "run_count": 0,
+      "error_count": 0,
+      "last_error": null
+    },
+    "daily_summary": {
+      "name": "daily_summary",
+      "cron_expr": "0 9 * * *",
+      "description": "Send daily summary at 9:00",
+      "last_run": null,
+      "run_count": 0,
+      "error_count": 0,
+      "last_error": null
+    },
+    "daily_report": {
+      "name": "daily_report",
+      "cron_expr": "0 0 * * *",
+      "description": "Generate daily report at midnight",
+      "last_run": null,
+      "run_count": 0,
+      "error_count": 0,
+      "last_error": null
+    }
+  },
+  "saved_at": "2026-04-03T17:07:34.997383"
+}

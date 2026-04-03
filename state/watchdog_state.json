@@ -1,0 +1,19 @@
+{
+  "timestamp": "2026-04-03T17:08:50.878894",
+  "processes": {
+    "openclaw-gateway": {
+      "name": "openclaw-gateway",
+      "command": "",
+      "health_check": null,
+      "pid": null,
+      "started_at": null,
+      "uptime": null,
+      "restarts": 0,
+      "max_restarts": 5,
+      "last_check": null,
+      "last_healthy": null,
+      "systemd_service": "openclaw-gateway.service"
+    }
+  },
+  "running": false
+}
