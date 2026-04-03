@@ -17,7 +17,7 @@ Core:
 # AGI exports
 from ops.proactive_observer import observe_system
 from ops.proactive_generator import generate_proactive_tasks
-from ops.goal_store import create_goal, get_goal, list_goals
-from ops.capability_model import CAPABILITIES, get_capability
+from ops.goal_store import create_goal, get_goal_by_id, load_goals
+from ops.capability_model import CAPABILITIES_FILE, get_capability
 from ops.self_assessor import assess_task
 from ops.limitation_detector import detect_limitation
