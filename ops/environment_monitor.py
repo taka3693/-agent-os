@@ -193,3 +193,179 @@ def analyze_environment() -> Dict[str, Any]:
         "suggested_actions": actions,
         "healthy": len(warnings) == 0,
     }
+
+
+# === Phase 12: 外部環境適応拡張 ===
+
+def detect_environment_changes() -> Dict[str, Any]:
+    """リアルタイムで環境変化を検出"""
+    import subprocess
+    
+    changes = []
+    
+    # ディスク使用量チェック
+    try:
+        result = subprocess.run(["df", "-h", "/"], capture_output=True, text=True)
+        for line in result.stdout.split("\n"):
+            if "/" in line and "%" in line:
+                usage = int(line.split()[-2].replace("%", ""))
+                if usage > 90:
+                    changes.append({
+                        "type": "disk_critical",
+                        "value": usage,
+                        "action_required": True,
+                    })
+                elif usage > 80:
+                    changes.append({
+                        "type": "disk_warning",
+                        "value": usage,
+                        "action_required": False,
+                    })
+    except:
+        pass
+    
+    # メモリチェック
+    try:
+        result = subprocess.run(["free", "-m"], capture_output=True, text=True)
+        lines = result.stdout.strip().split("\n")
+        if len(lines) > 1:
+            parts = lines[1].split()
+            total = int(parts[1])
+            used = int(parts[2])
+            usage_pct = (used / total) * 100 if total > 0 else 0
+            if usage_pct > 90:
+                changes.append({
+                    "type": "memory_critical",
+                    "value": usage_pct,
+                    "action_required": True,
+                })
+    except:
+        pass
+    
+    # ネットワーク接続チェック
+    try:
+        result = subprocess.run(["ping", "-c", "1", "-W", "2", "8.8.8.8"], capture_output=True)
+        if result.returncode != 0:
+            changes.append({
+                "type": "network_down",
+                "value": None,
+                "action_required": True,
+            })
+    except:
+        pass
+    
+    return {
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "changes": changes,
+        "critical_count": len([c for c in changes if c.get("action_required")]),
+    }
+
+
+def adapt_to_changes(changes: List[Dict]) -> Dict[str, Any]:
+    """環境変化に適応"""
+    adaptations = []
+    
+    for change in changes:
+        change_type = change.get("type", "")
+        
+        if change_type == "disk_critical":
+            adaptations.append({
+                "action": "cleanup_temp_files",
+                "command": "find /tmp -type f -mtime +7 -delete",
+                "priority": "high",
+            })
+        
+        elif change_type == "memory_critical":
+            adaptations.append({
+                "action": "reduce_parallelism",
+                "setting": "max_parallel_tasks=1",
+                "priority": "high",
+            })
+        
+        elif change_type == "network_down":
+            adaptations.append({
+                "action": "switch_to_offline_mode",
+                "setting": "offline_mode=true",
+                "priority": "critical",
+            })
+        
+        elif change_type == "disk_warning":
+            adaptations.append({
+                "action": "log_cleanup",
+                "command": "find ~/agent-os/logs -name '*.log' -mtime +30 -delete",
+                "priority": "low",
+            })
+    
+    return {
+        "adaptations": adaptations,
+        "count": len(adaptations),
+        "auto_applied": False,  # 手動確認を推奨
+    }
+
+
+def monitor_external_services() -> Dict[str, Any]:
+    """外部サービスの状態を監視"""
+    import subprocess
+    
+    services = {
+        "github": {"url": "https://github.com", "status": "unknown"},
+        "telegram": {"url": "https://api.telegram.org", "status": "unknown"},
+        "openai": {"url": "https://api.openai.com", "status": "unknown"},
+    }
+    
+    for name, info in services.items():
+        try:
+            result = subprocess.run(
+                ["curl", "-s", "-o", "/dev/null", "-w", "%{http_code}", "--max-time", "5", info["url"]],
+                capture_output=True,
+                text=True,
+            )
+            code = result.stdout.strip()
+            info["status"] = "up" if code in ["200", "301", "302", "403"] else "down"
+            info["http_code"] = code
+        except:
+            info["status"] = "error"
+    
+    healthy = len([s for s in services.values() if s["status"] == "up"])
+    
+    return {
+        "services": services,
+        "healthy": healthy,
+        "total": len(services),
+        "all_healthy": healthy == len(services),
+    }
+
+
+def create_adaptation_plan(current_state: Dict, target_state: Dict) -> Dict[str, Any]:
+    """現在の状態から目標状態への適応計画を作成"""
+    plan = []
+    
+    # リソース差分を計算
+    current_resources = current_state.get("resources", {})
+    target_resources = target_state.get("resources", {})
+    
+    for resource, target_value in target_resources.items():
+        current_value = current_resources.get(resource, 0)
+        
+        if current_value < target_value:
+            plan.append({
+                "action": "increase",
+                "resource": resource,
+                "from": current_value,
+                "to": target_value,
+                "priority": "medium",
+            })
+        elif current_value > target_value * 1.5:
+            plan.append({
+                "action": "decrease",
+                "resource": resource,
+                "from": current_value,
+                "to": target_value,
+                "priority": "low",
+            })
+    
+    return {
+        "plan": plan,
+        "steps": len(plan),
+        "estimated_time": len(plan) * 5,  # 5分/ステップ
+    }

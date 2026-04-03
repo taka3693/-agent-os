@@ -483,7 +483,7 @@ def main():
     start_parser.add_argument("--mission-name", "--mission_name", required=True, dest="mission_name", help="Mission name")
     start_parser.add_argument("--goal", required=True, help="Mission goal")
     start_parser.add_argument("--chat-id", "--chat_id", required=True, dest="chat_id", help="Telegram chat ID")
-    start_parser.add_argument("--agents", required=True, help="Agents JSON string")
+    start_parser.add_argument("--agents", required=False, default=os.environ.get("MISO_AGENTS", "[]"), help="Agents JSON string")
 
     # complete_mission command
     complete_parser = subparsers.add_parser("complete_mission", help="Complete a mission")
