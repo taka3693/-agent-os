@@ -1,0 +1,26 @@
+{
+  "fix_id": "test-001",
+  "timestamp": "2026-04-03T05:28:18.259348",
+  "verification": {
+    "syntax": {
+      "ok": true,
+      "total": 1,
+      "passed": 1,
+      "failed": 0,
+      "errors": []
+    },
+    "tests": {
+      "ok": false,
+      "total": 0,
+      "passed": 0,
+      "failed": 0,
+      "skipped": 0,
+      "exit_code": 2,
+      "error": null
+    }
+  },
+  "overall": {
+    "ok": false,
+    "status": "failed"
+  }
+}

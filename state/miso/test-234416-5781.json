@@ -1,0 +1,18 @@
+{
+  "mission_id": "test-234416-5781",
+  "mission_name": "MISO Integration Test",
+  "goal": "Verify MISO end-to-end",
+  "chat_id": "6474742983",
+  "message_id": "8006",
+  "state": "COMPLETE",
+  "agents": [
+    {
+      "name": "担当1",
+      "status": "INIT",
+      "label": "tester"
+    }
+  ],
+  "created_at": "2026-04-02T14:44:27+00:00",
+  "updated_at": "2026-04-02T14:44:28+00:00",
+  "next_action": "Test completed successfully!"
+}

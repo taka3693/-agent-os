@@ -180,3 +180,142 @@ def generate_self_report() -> Dict[str, Any]:
         },
         "key_limitations": [l["description"] for l in limitations[:3]],
     }
+
+
+# === Phase 11: メタ認知拡張 ===
+
+def estimate_uncertainty(task: Dict[str, Any]) -> Dict[str, Any]:
+    """タスクの不確実性を推定"""
+    uncertainty = 0.5  # ベースライン
+    factors = []
+    
+    task_type = task.get("type", "")
+    params = task.get("params", {})
+    
+    # 未知のタスクタイプは不確実性が高い
+    known_types = ["code_execution", "file_operation", "web_search", "analysis", "generation"]
+    if task_type not in known_types:
+        uncertainty += 0.2
+        factors.append("unknown_task_type")
+    
+    # 複雑なパラメータは不確実性が高い
+    if len(params) > 5:
+        uncertainty += 0.1
+        factors.append("complex_parameters")
+    
+    # 過去の失敗履歴をチェック
+    # (簡易実装 - 実際はlearning履歴を参照)
+    
+    uncertainty = min(1.0, max(0.0, uncertainty))
+    
+    confidence = 1.0 - uncertainty
+    recommendation = "proceed" if confidence > 0.6 else "review" if confidence > 0.3 else "decline"
+    
+    return {
+        "uncertainty": uncertainty,
+        "confidence": confidence,
+        "factors": factors,
+        "recommendation": recommendation,
+    }
+
+
+def recognize_limitations(task: Dict[str, Any]) -> Dict[str, Any]:
+    """能力限界を認識"""
+    limitations = []
+    can_handle = True
+    
+    task_type = task.get("type", "")
+    requirements = task.get("requirements", [])
+    
+    # 知られている限界
+    known_limitations = {
+        "real_time_data": "リアルタイムデータへのアクセスが制限されています",
+        "physical_action": "物理的なアクションは実行できません",
+        "private_api": "プライベートAPIへのアクセスが必要です",
+        "large_file": "大きなファイル（>100MB）の処理は制限されています",
+        "gpu_intensive": "GPU集中処理は制限されています",
+    }
+    
+    for req in requirements:
+        if req in known_limitations:
+            limitations.append({
+                "type": req,
+                "description": known_limitations[req],
+                "severity": "blocking",
+            })
+            can_handle = False
+    
+    # タスクタイプに基づく制限
+    if "video_edit" in task_type:
+        limitations.append({
+            "type": "video_editing",
+            "description": "高度な動画編集は制限されています",
+            "severity": "partial",
+        })
+    
+    return {
+        "can_handle": can_handle,
+        "limitations": limitations,
+        "alternatives": [] if can_handle else ["手動で実行", "別のツールを使用"],
+    }
+
+
+def self_reflect(execution_result: Dict[str, Any]) -> Dict[str, Any]:
+    """実行結果を自己反省"""
+    success = execution_result.get("success", False)
+    error = execution_result.get("error")
+    duration = execution_result.get("duration", 0)
+    
+    reflections = []
+    improvements = []
+    
+    if not success:
+        reflections.append(f"タスクが失敗しました: {error}")
+        
+        if "timeout" in str(error).lower():
+            improvements.append("タイムアウト値を増加する")
+        if "permission" in str(error).lower():
+            improvements.append("権限設定を確認する")
+        if "not found" in str(error).lower():
+            improvements.append("入力の検証を強化する")
+    else:
+        reflections.append("タスクが正常に完了しました")
+        
+        if duration > 60:
+            improvements.append("実行時間の最適化を検討する")
+    
+    return {
+        "success": success,
+        "reflections": reflections,
+        "improvements": improvements,
+        "learning_points": len(improvements),
+    }
+
+
+def calibrate_confidence(predictions: List[Dict], actuals: List[Dict]) -> Dict[str, Any]:
+    """予測と実績を比較して信頼度を較正"""
+    if not predictions or not actuals or len(predictions) != len(actuals):
+        return {"ok": False, "error": "Invalid input"}
+    
+    correct = 0
+    total = len(predictions)
+    
+    for pred, actual in zip(predictions, actuals):
+        pred_success = pred.get("predicted_success", True)
+        actual_success = actual.get("success", False)
+        
+        if pred_success == actual_success:
+            correct += 1
+    
+    accuracy = correct / total if total > 0 else 0
+    
+    # 較正係数を計算
+    calibration_factor = accuracy  # 簡易版
+    
+    return {
+        "ok": True,
+        "accuracy": accuracy,
+        "calibration_factor": calibration_factor,
+        "samples": total,
+        "recommendation": "良好" if accuracy > 0.7 else "要改善",
+    }

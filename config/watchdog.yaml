@@ -1,0 +1,8 @@
+processes:
+- max_restarts: 5
+  name: openclaw-gateway
+  restart_delay: 10
+  systemd_service: openclaw-gateway.service
+watchdog:
+  health_check_timeout: 10
+  interval_seconds: 60

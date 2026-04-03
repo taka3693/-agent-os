@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 import json
+import re
 import os
 import subprocess
 from pathlib import Path
@@ -40,7 +41,13 @@ def _run_openclaw_message(action: str, **kwargs) -> Dict[str, Any]:
             try:
                 return json.loads(result.stdout)
             except json.JSONDecodeError:
-                return {"ok": True, "stdout": result.stdout}
+                # Try to extract message_id from text output
+                # Format: "✅ Sent via Telegram. Message ID: 8005"
+                stdout = result.stdout
+                match = re.search(r'Message ID[:\s]+(\d+)', stdout)
+                if match:
+                    return {"ok": True, "message_id": match.group(1)}
+                return {"ok": True, "stdout": stdout}
         else:
             return {"ok": False, "error": result.stderr or result.stdout}
     except subprocess.TimeoutExpired:

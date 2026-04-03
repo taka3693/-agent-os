@@ -1,0 +1,25 @@
+{
+  "mission_id": "si-20260403055326",
+  "mission_name": "Self-Improvement Cycle",
+  "goal": "Analyze issues, generate fixes",
+  "chat_id": "6474742983",
+  "message_id": "8175",
+  "state": "COMPLETE",
+  "agents": [
+    {
+      "name": "analyzer",
+      "status": "COMPLETE",
+      "label": null,
+      "detail": "完了"
+    },
+    {
+      "name": "proposer",
+      "status": "COMPLETE",
+      "label": null,
+      "detail": "完了"
+    }
+  ],
+  "created_at": "2026-04-02T20:53:37+00:00",
+  "updated_at": "2026-04-02T20:53:55+00:00",
+  "next_action": "Generated 2 fix proposals"
+}

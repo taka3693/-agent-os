@@ -1,0 +1,17 @@
+{
+  "mission_id": "mission-20260402-234559-7d0728",
+  "mission_name": "task-20260402-144559-741985-afd5e2",
+  "goal": "task-20260402-144559-741985-afd5e2",
+  "chat_id": "6474742983",
+  "message_id": "8008",
+  "state": "COMPLETE",
+  "agents": [
+    {
+      "label": "executor",
+      "status": "executing..."
+    }
+  ],
+  "created_at": "2026-04-02T14:46:08+00:00",
+  "updated_at": "2026-04-02T14:46:17+00:00",
+  "next_action": "Task task-20260402-144559-741985-afd5e2 completed"
+}

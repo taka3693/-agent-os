@@ -15,9 +15,13 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from router.route_to_task import route_message_to_task
 from runner.run_route_task import apply_approval_decision as apply_route_approval_decision
-from runner.run_execution_task import run_task as run_execution_task_run_task
+from runner.run_execution_task import run_task as run_execution_task_run_task, run_task_with_miso
 from miso.bridge import handle_approval_callback as miso_handle_approval_callback
 
+
+# MISO Integration - set to True to enable mission control reporting
+MISO_ENABLED = True
+MISO_CHAT_ID = "6474742983"
 
 HELP_TEXT = """AgentOS 使い方
 
@@ -422,12 +426,31 @@ def handle_route_approval(message_text: str) -> Dict[str, Any]:
 
 
 def summarize_task(task: Dict[str, Any]) -> Dict[str, Any]:
+    """Return human-readable summary when MISO is enabled, JSON otherwise."""
+    status = task.get("status", "unknown")
+    task_id = task.get("id", "unknown")
+    source_text = task.get("meta", {}).get("source_text", task_id)
+    error = task.get("error")
+    
+    # If MISO is enabled, return minimal info (MISO message is the main output)
+    if MISO_ENABLED:
+        if status == "completed":
+            # Return None to suppress any output - MISO message is sufficient
+            return None
+        elif status == "failed":
+            return {
+                "ok": False,
+                "mode": "execution",
+                "telegram_reply_text": f"❌ エラー: {error}" if error else "❌ タスク失敗",
+            }
+    
+    # Fallback: return JSON for non-MISO mode
     return {
-        "ok": task.get("status") == "completed",
+        "ok": status == "completed",
         "mode": "execution",
-        "task_id": task.get("id"),
-        "status": task.get("status"),
-        "error": task.get("error"),
+        "task_id": task_id,
+        "status": status,
+        "error": error,
         "operation_count": task.get("operation_count", 0),
         "artifacts": task.get("artifacts", []),
         "run_log_path": task.get("run_log_path"),
@@ -604,9 +627,15 @@ def handle_message(message_text: str) -> Dict[str, Any]:
 
     routed = route_message_to_task(message_text)
     task_path = Path(routed["task_path"])
-    task = run_execution_task_run_task(task_path)
+    if MISO_ENABLED:
+        task = run_task_with_miso(task_path, miso_enabled=True, miso_chat_id=MISO_CHAT_ID)
+    else:
+        task = run_execution_task_run_task(task_path)
 
     out = summarize_task(task)
+    if out is None:
+        # MISO handled the output, return minimal success indicator
+        return {"ok": True, "mode": "miso", "miso_only": True}
     out["task_path"] = str(task_path)
     return out
 
@@ -618,6 +647,14 @@ def main() -> int:
 
     message_text = sys.argv[1]
     result = handle_message(message_text)
+
+    # If MISO handled the output, do not print anything
+    if result and result.get("miso_only"):
+        return 0
+    
+    # If MISO handled the output, dont print anything
+    if result and result.get("miso_only"):
+        return 0
     import json
     print(json.dumps(result, ensure_ascii=False, indent=2))
     return 0 if result.get("ok") else 1
