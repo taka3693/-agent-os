@@ -41,13 +41,13 @@ _DEFAULT_ROLE = "primary"
 # ---------------------------------------------------------------------------
 
 _FALLBACK_MODEL_FOR_ROLE: Dict[str, str] = {
-    "primary": "zai/glm-5",
+    "primary": "zai/glm-4.7",
     "subagent": "openrouter/moonshotai/kimi-k2.5",
-    "reviewer": "anthropic/claude-sonnet-4-6",
-    "deep_reviewer": "anthropic/claude-opus-4-6",
+    "reviewer": "anthropic/claude-opus-4-5",
+    "deep_reviewer": "anthropic/claude-opus-4-5",
 }
 
-_DEFAULT_MODEL = "zai/glm-5"
+_DEFAULT_MODEL = "zai/glm-4.7"
 
 
 # ---------------------------------------------------------------------------
